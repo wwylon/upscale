@@ -1,0 +1,83 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "upscaler"
+version = "0.3.0"
+description = "AI image upscaler — chained Real-ESRGAN with feather-blended tiles"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "upscale" }]
+dependencies = [
+    "torch>=2.0",
+    "torchvision",
+    "spandrel",
+    "Pillow",
+    "tifffile",
+    "imagecodecs",
+    "psd-tools>=1.9",
+    "tqdm",
+    "click",
+    "numpy",
+    "pydantic>=2.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/wwylon/upscale"
+Repository = "https://github.com/wwylon/upscale"
+Issues = "https://github.com/wwylon/upscale/issues"
+
+[project.optional-dependencies]
+ui = ["gradio>=4.0"]
+server = ["fastapi>=0.110", "uvicorn[standard]>=0.27", "python-multipart>=0.0.9"]
+mcp = ["mcp>=1.0"]
+desktop = ["pywebview>=5.0"]
+# Slim Windows desktop: FastAPI + webview + ORT — no Torch at runtime
+slim = [
+    "upscaler[server,desktop]",
+    "onnxruntime>=1.17",
+    "Pillow",
+    "numpy",
+    "tifffile",
+    "imagecodecs",
+    "tqdm",
+    "click",
+    "pydantic>=2.0",
+]
+dev = ["pytest>=7.0", "ruff>=0.4", "httpx>=0.27", "mypy>=1.8"]
+# Classical resize prefers OpenCV (C++/SIMD); Pillow fallback always works
+classical = ["opencv-python-headless>=4.8"]
+# Raster→SVG→raster paper path (logos / line art). resvg_py = Windows-friendly SVG→PNG.
+vectorize = ["vtracer>=0.6", "pyautotrace>=0.0.7", "resvg_py>=0.2"]
+all = ["upscaler[ui,server,mcp,desktop,slim,dev,classical,vectorize]"]
+
+[project.scripts]
+upscale = "upscaler.cli:cli"
+
+[tool.setuptools.packages.find]
+include = ["upscaler*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+# Classic pyflakes + pycodestyle errors (keeps verify/CI stable across ruff minors)
+select = ["E4", "E7", "E9", "F"]
+ignore = [
+    "E402",  # lazy/optional imports inside functions are intentional
+    "E742",  # single-letter type names in generics (e.g. I for Image)
+]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+follow_imports = "silent"
+warn_unused_ignores = false
+pretty = true

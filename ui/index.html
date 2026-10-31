@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/ui/support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="/ui/_ds/modernist-317f259f-5541-4861-8bcf-5422b9067f44/styles.css">
+<style>:root{--fs:1}body{margin:0;background:var(--color-bg);font-size:calc(15px*var(--fs))}a{color:var(--color-accent-700)}a:hover{color:var(--color-accent-600)}.btn,.input,.seg-opt,select{font-size:calc(14px*var(--fs))!important}.tag,.field label{font-size:calc(12px*var(--fs))!important}@media (min-width:1100px){.app-root{height:100vh;overflow:hidden}.app-main{min-height:0}.col{overflow-y:auto;max-height:100%}}.seg-opt{background:transparent;color:var(--color-text);border-top:0;border-bottom:0;border-right:0;font-family:inherit}.alpha-checker{background-color:var(--color-neutral-200);background-image:linear-gradient(45deg,var(--color-neutral-300) 25%,transparent 25%),linear-gradient(-45deg,var(--color-neutral-300) 25%,transparent 25%),linear-gradient(45deg,transparent 75%,var(--color-neutral-300) 75%),linear-gradient(-45deg,transparent 75%,var(--color-neutral-300) 75%);background-size:18px 18px;background-position:0 0,0 9px,9px -9px,-9px 0}</style>
+<script src="/ui/_ds/modernist-317f259f-5541-4861-8bcf-5422b9067f44/_ds_bundle.js"></script>
+</helmet>
+<div class="app-root" style="min-height:100vh;display:flex;flex-direction:column;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body)">
+  <sc-if value="{{ showOnnxBanner }}" hint-placeholder-val="{{ false }}"><div style="padding:10px 24px;border-bottom:2px solid var(--color-accent);background:var(--color-accent-100);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:calc(13px*var(--fs,1));line-height:1.4"><div>{{ onnxBannerText }} <a href="library.html">Open library</a> · <button class="btn btn-ghost" style="padding:0;display:inline" onClick="{{ openFirstRunHelp }}">First-run help</button></div><button class="btn btn-ghost" onClick="{{ dismissOnnxBanner }}">Dismiss</button></div></sc-if>
+  <header style="position:relative;z-index:5;background:var(--color-bg);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 24px;border-bottom:2px solid var(--color-divider);flex-wrap:wrap">
+    <div style="display:flex;align-items:baseline;gap:16px">
+      <span style="font-family:var(--font-heading);font-weight:800;font-size:calc(22px*var(--fs,1));letter-spacing:-0.02em">UPSCALE<span style="color:var(--color-accent)">.</span></span>
+      <span style="font-size:calc(13px*var(--fs,1))">Free image upscaler · Real-ESRGAN, HAT, SPAN</span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span class="tag tag-neutral">{{ deviceLabel }}</span>
+      <sc-if value="{{ attn }}" hint-placeholder-val="{{ false }}"><a href="library.html" class="tag tag-accent" style="text-decoration:none">{{ attnLabel }}</a></sc-if>
+      <sc-if value="{{ showModelsNav }}" hint-placeholder-val="{{ true }}"><a href="library.html" style="font-size:calc(14px*var(--fs,1));font-weight:700;align-self:center">Models</a></sc-if>
+      <a href="simple.html" onClick="{{ goSimple }}" style="font-size:calc(14px*var(--fs,1));font-weight:700;align-self:center">Simple view</a>
+      <button title="{{ helpBtn }}" aria-label="{{ helpBtn }}" class="btn btn-secondary" style="padding:6px" onClick="{{ openHelp }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;display:block"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></button>
+      <button data-help="settings" title="{{ setBtn }}" aria-label="{{ setBtn }}" class="btn btn-secondary" style="padding:6px" onClick="{{ toggleSet }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;display:block"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg></button>
+      <sc-if value="{{ setOpen }}" hint-placeholder-val="{{ false }}"><div style="position:fixed;inset:0;z-index:-1" onClick="{{ toggleSet }}"></div><div style="position:absolute;right:24px;top:100%;width:min(340px,calc(100vw - 48px));background:var(--color-bg);border:2px solid var(--color-text);padding:20px;display:flex;flex-direction:column;gap:18px">
+        <div class="field"><label style="display:flex;gap:8px;align-items:center"><sc-if value="{{ isLightT }}" hint-placeholder-val="{{ true }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;display:block"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg></sc-if><sc-if value="{{ isDarkT }}" hint-placeholder-val="{{ false }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;display:block"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></sc-if><sc-if value="{{ isSysT }}" hint-placeholder-val="{{ false }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;display:block"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg></sc-if>Theme</label><select class="input" value="{{ theme }}" onChange="{{ onTheme }}"><option value="light">Light</option><option value="dark">Dark</option><option value="system">System</option></select></div>
+        <div class="field"><label style="display:flex;gap:8px;align-items:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;display:block"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" x2="15" y1="20" y2="20"/><line x1="12" x2="12" y1="4" y2="20"/></svg>Text size</label><select class="input" value="{{ fsize }}" onChange="{{ onFsize }}"><option value="normal">Normal</option><option value="larger">Larger</option><option value="largest">Largest</option></select></div>
+        <div class="field"><label style="display:flex;gap:8px;align-items:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;display:block"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>Language</label><select class="input" value="{{ lang }}" onChange="{{ onLang }}"><sc-for list="{{ langOpts }}" as="l" hint-placeholder-count="2"><option value="{{ l.code }}" disabled="{{ l.off }}">{{ l.label }}</option></sc-for></select></div>
+        <div style="border-top:1px solid var(--color-neutral-300);padding-top:12px;display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-ghost" style="justify-content:flex-start;padding-left:0" onClick="{{ showAbout }}">About Upscale</button>
+          <button class="btn btn-ghost" style="justify-content:flex-start;padding-left:0" onClick="{{ showLicense }}">License</button>
+          <button class="btn btn-ghost" style="justify-content:flex-start;padding-left:0" onClick="{{ checkUpdates }}">Check for updates…</button>
+          <a href="library.html" class="btn btn-ghost" style="justify-content:flex-start;padding-left:0;text-decoration:none">Model library…</a>
+          <button class="btn btn-ghost" style="justify-content:flex-start;padding-left:0" onClick="{{ exportSettings }}">Export settings…</button>
+          <button class="btn btn-ghost" style="justify-content:flex-start;padding-left:0" onClick="{{ importSettings }}">Import settings…</button>
+          <input type="file" accept="application/json,.json" ref="{{ settingsFileRef }}" onChange="{{ onSettingsFile }}" style="display:none">
+          <span style="font-size:calc(12px*var(--fs,1));line-height:1.4;opacity:.85">Models download on demand; not shipped in the slim installer.</span>
+        </div>
+      </div></sc-if>
+    </div>
+  </header>
+
+  <main class="app-main" style="flex:1;display:flex;flex-wrap:wrap;align-items:stretch">
+    <!-- SETTINGS: Size · Method · Output · More (canvas stays dominant) -->
+    <aside class="col" style="flex:0 1 340px;max-width:min(360px,100%);border-right:2px solid var(--color-divider);border-bottom:2px solid var(--color-divider);padding:24px;display:flex;flex-direction:column;gap:24px">
+      <section style="display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:calc(12px*var(--fs,1));font-weight:700;letter-spacing:.08em">MODE</div>
+        <div class="seg" style="display:grid;grid-template-columns:1fr 1fr">
+          <button class="seg-opt" style="{{ tabScale }}" onClick="{{ setTabScale }}">Scale</button>
+          <button class="seg-opt" style="{{ tabTest }}" onClick="{{ setTabTest }}">Test</button>
+        </div>
+      </section>
+
+      <sc-if value="{{ isScaleTab }}" hint-placeholder-val="{{ true }}">
+      <section style="display:flex;flex-direction:column;gap:12px;border-top:2px solid var(--color-divider);padding-top:24px">
+        <div data-help="size" style="font-size:calc(12px*var(--fs,1));font-weight:700;letter-spacing:.08em">01 · SIZE</div>
+        <div class="seg" style="display:grid;grid-template-columns:repeat(3,1fr)">
+          <button class="seg-opt" style="{{ segScale }}" onClick="{{ setModeScale }}">Scale</button>
+          <button class="seg-opt" style="{{ segTarget }}" onClick="{{ setModeTarget }}">Long edge</button>
+          <button class="seg-opt" style="{{ segDims }}" onClick="{{ setModeDims }}">W × H</button>
+        </div>
+        <sc-if value="{{ isScale }}" hint-placeholder-val="{{ true }}">
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px">
+            <sc-for list="{{ scalePresets }}" as="p" hint-placeholder-count="5">
+              <button class="btn btn-secondary" style="{{ p.style }}" onClick="{{ p.pick }}">{{ p.label }}</button>
+            </sc-for>
+          </div>
+          <div class="field"><label>Custom scale (×)</label><input class="input" type="number" min="0.1" step="0.5" value="{{ scale }}" onInput="{{ onScale }}"></div>
+        </sc-if>
+        <sc-if value="{{ isDims }}" hint-placeholder-val="{{ false }}">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="field"><label>Width (px)</label><input class="input" type="number" min="1" value="{{ dw }}" onInput="{{ onDw }}"></div><div class="field"><label>Height (px)</label><input class="input" type="number" min="1" value="{{ dh }}" onInput="{{ onDh }}"></div></div>
+          <span style="font-size:calc(12px*var(--fs,1))">Aspect ratio is kept: changing one side updates the other.</span>
+        </sc-if>
+        <sc-if value="{{ isTarget }}" hint-placeholder-val="{{ false }}">
+          <div class="field"><label>Long edge (px)</label><input class="input" type="number" min="1" step="100" value="{{ target }}" onInput="{{ onTarget }}"></div>
+        </sc-if>
+        <div id="presetChips" style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ presetChips }}" as="p" hint-placeholder-count="0"><button class="btn btn-secondary" style="{{ p.style }}" onClick="{{ p.pick }}">{{ p.label }}</button></sc-for></div>
+      </section>
+
+      <section style="display:flex;flex-direction:column;gap:12px;border-top:2px solid var(--color-divider);padding-top:24px">
+        <div data-help="model" style="font-size:calc(12px*var(--fs,1));font-weight:700;letter-spacing:.08em">02 · METHOD</div>
+        <div class="field"><label>Method</label><div class="seg"><sc-for list="{{ methodModes }}" as="d" hint-placeholder-count="2"><button class="seg-opt" style="{{ d.style }}" onClick="{{ d.pick }}">{{ d.label }}</button></sc-for></div></div>
+        <sc-if value="{{ isClassical }}" hint-placeholder-val="{{ false }}">
+          <div class="field"><label>Algorithm</label><select class="input" onChange="{{ onAlgorithm }}" value="{{ algorithm }}"><sc-for list="{{ algorithmOptions }}" as="a" hint-placeholder-count="8"><option value="{{ a.name }}" disabled="{{ a.disabled }}">{{ a.label }}</option></sc-for></select></div>
+          <p style="margin:0;font-size:calc(14px*var(--fs,1));line-height:1.45">{{ algoDesc }} No model download. Uses OpenCV when installed, otherwise Pillow.</p>
+          <sc-if value="{{ isVectorize }}" hint-placeholder-val="{{ false }}">
+            <div class="field"><label>Engine</label><div class="seg"><sc-for list="{{ vecEngines }}" as="d" hint-placeholder-count="2"><button class="seg-opt" style="{{ d.style }}" onClick="{{ d.pick }}">{{ d.label }}</button></sc-for></div></div>
+            <sc-if value="{{ isVecVtracer }}" hint-placeholder-val="{{ true }}"><div class="field"><label>Path style</label><div class="seg"><sc-for list="{{ vecModes }}" as="d" hint-placeholder-count="2"><button class="seg-opt" style="{{ d.style }}" onClick="{{ d.pick }}">{{ d.label }}</button></sc-for></div></div></sc-if>
+            <div class="field"><label>Color precision · {{ vecColors }}</label><input type="range" min="1" max="8" step="1" value="{{ vecColors }}" onInput="{{ onVecColors }}" style="accent-color:var(--color-accent)"><span style="font-size:calc(12px*var(--fs,1))">Lower = flatter logo colors; higher keeps more shades.</span></div>
+            <div class="field"><label>Speckle cleanup · {{ vecSpeckle }}</label><input type="range" min="0" max="32" step="1" value="{{ vecSpeckle }}" onInput="{{ onVecSpeckle }}" style="accent-color:var(--color-accent)"><span style="font-size:calc(12px*var(--fs,1))">VTracer: min blob size (px). AutoTrace: despeckle level.</span></div>
+            <div class="field"><label>Corner threshold · {{ vecCorners }}°</label><input type="range" min="0" max="180" step="5" value="{{ vecCorners }}" onInput="{{ onVecCorners }}" style="accent-color:var(--color-accent)"><span style="font-size:calc(12px*var(--fs,1))">Higher detects more corners (sharper angles).</span></div>
+            <div class="field"><label>Trace resolution · {{ vecTrace }} px</label><input type="range" min="256" max="2048" step="128" value="{{ vecTrace }}" onInput="{{ onVecTrace }}" style="accent-color:var(--color-accent)"><span style="font-size:calc(12px*var(--fs,1))">Long-edge cap before tracing. Higher = more detail, slower.</span></div>
+          </sc-if>
+        </sc-if>
+        <sc-if value="{{ isNeural }}" hint-placeholder-val="{{ true }}">
+        <div class="field"><label>Model</label><select class="input" onChange="{{ onModel }}" value="{{ model }}">
+          <sc-for list="{{ models }}" as="m" hint-placeholder-count="3"><option value="{{ m.name }}">{{ m.label }}</option></sc-for>
+        </select></div>
+        <p style="margin:0;font-size:calc(14px*var(--fs,1));line-height:1.45">{{ modelDesc }}</p>
+        <sc-if value="{{ suggestLine }}" hint-placeholder-val="{{ false }}"><div style="font-size:calc(13px*var(--fs,1));line-height:1.45;display:flex;flex-wrap:wrap;gap:8px;align-items:center"><span>{{ suggestLine }}</span><sc-if value="{{ suggestModel }}" hint-placeholder-val="{{ false }}"><button class="btn btn-ghost" style="padding:0" onClick="{{ useSuggestion }}">Use suggestion</button></sc-if></div></sc-if>
+        <sc-if value="{{ modelNote }}" hint-placeholder-val="{{ false }}"><div style="border:2px solid var(--color-accent);background:var(--color-accent-100);padding:12px;display:flex;flex-direction:column;gap:10px;font-size:calc(13px*var(--fs,1));line-height:1.45"><div>{{ modelNote }}</div><button class="btn btn-secondary" style="align-self:flex-start" onClick="{{ fixModel }}">{{ noteBtn }}</button></div></sc-if>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="tag tag-accent">{{ modelKind }}</span><span class="tag tag-neutral">{{ modelState }}</span></div>
+        <sc-if value="{{ isWdn }}" hint-placeholder-val="{{ false }}"><div class="field"><label>Denoise strength · {{ denoise }}</label><input type="range" min="0" max="1" step="0.05" value="{{ denoise }}" onInput="{{ onDenoise }}" style="accent-color:var(--color-accent)"></div></sc-if>
+        <a href="library.html" class="btn btn-secondary" style="text-decoration:none;align-self:flex-start">Model library…</a>
+        </sc-if>
+      </section>
+
+      <section style="display:flex;flex-direction:column;gap:12px;border-top:2px solid var(--color-divider);padding-top:24px">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div data-help="filters" style="font-size:calc(12px*var(--fs,1));font-weight:700;letter-spacing:.08em">FILTERS</div><button class="btn btn-ghost" onClick="{{ resetFilters }}">Reset filters</button></div>
+<div style="display:flex;flex-direction:column"><sc-for list="{{ filters }}" as="f" hint-placeholder-count="4"><div style="display:flex;flex-direction:column;gap:8px;padding:10px 0;border-bottom:1px solid var(--color-neutral-300)">
+<label style="display:flex;gap:10px;align-items:center;font-size:calc(14px*var(--fs,1))"><input type="checkbox" checked="{{ f.on }}" onChange="{{ f.toggle }}" style="accent-color:var(--color-accent);width:18px;height:18px;margin:0"><span style="flex:1">{{ f.label }}</span><span class="tag tag-neutral">{{ f.stage }}</span></label>
+<sc-if value="{{ f.on }}" hint-placeholder-val="{{ false }}"><div class="field"><label>Amount · {{ f.v }}</label><input type="range" min="0" max="100" step="5" value="{{ f.v }}" onInput="{{ f.setV }}" style="accent-color:var(--color-accent)"></div><span style="font-size:calc(12px*var(--fs,1));line-height:1.4">{{ f.desc }}</span></sc-if>
+</div></sc-for></div></section>
+      </sc-if>
+
+      <sc-if value="{{ isTestTab }}" hint-placeholder-val="{{ false }}">
+      <section data-help="test" style="display:flex;flex-direction:column;gap:12px;border-top:2px solid var(--color-divider);padding-top:24px">
+        <div style="font-size:calc(12px*var(--fs,1));font-weight:700;letter-spacing:.08em">TEST ON A CROP</div>
+        <div class="field"><label>Crop size (px)</label><div class="seg"><sc-for list="{{ cropSizes }}" as="d" hint-placeholder-count="3"><button class="seg-opt" style="{{ d.style }}" onClick="{{ d.pick }}">{{ d.label }}</button></sc-for></div></div>
+        <div style="font-size:calc(13px*var(--fs,1));line-height:1.4">Click or drag on the image to place the crop. Find best model runs selected variants on this region.</div>
+        <button class="btn btn-secondary" onClick="{{ autoRegion }}">Auto-pick detailed area</button>
+        <button class="btn btn-secondary" onClick="{{ runCrop }}">Upscale this crop</button>
+        <div class="field"><label>Variants to compare</label>
+        <div style="font-size:calc(12px*var(--fs,1));font-weight:700;letter-spacing:.06em;margin-top:4px">Models</div>
+        <div style="display:flex;gap:8px"><button class="btn btn-ghost" style="padding:0" onClick="{{ selAll }}">All</button><button class="btn btn-ghost" style="padding:0" onClick="{{ selNone }}">None</button></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ chips }}" as="c" hint-placeholder-count="6"><button class="btn btn-secondary" style="{{ c.style }}" onClick="{{ c.pick }}">{{ c.label }}</button></sc-for></div>
+        <div style="font-size:calc(12px*var(--fs,1));font-weight:700;letter-spacing:.06em;margin-top:8px">Classical scaling</div>
+        <div style="display:flex;gap:8px"><button class="btn btn-ghost" style="padding:0" onClick="{{ selAlgoAll }}">All</button><button class="btn btn-ghost" style="padding:0" onClick="{{ selAlgoNone }}">None</button></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ algoChips }}" as="c" hint-placeholder-count="5"><button class="btn btn-secondary" style="{{ c.style }}" onClick="{{ c.pick }}">{{ c.label }}</button></sc-for></div>
+        <label style="display:flex;gap:10px;align-items:center;font-size:calc(14px*var(--fs,1));margin-top:8px"><input type="checkbox" checked="{{ cmpIncludeFilters }}" onChange="{{ onCmpIncludeFilters }}" style="accent-color:var(--color-accent);width:18px;height:18px;margin:0"> Include current filters as variants</label>
+        </div>
+        <sc-if value="{{ chipNote }}" hint-placeholder-val="{{ false }}"><div style="font-size:calc(12px*var(--fs,1));line-height:1.4">{{ chipNote }}</div></sc-if>
+      </section>
+      </sc-if>
+
+      <section style="display:flex;flex-direction:column;gap:12px;border-top:2px solid var(--color-divider);padding-top:24px">
+        <button data-help="advanced" onClick="{{ toggleAdv }}" class="btn btn-ghost" style="justify-content:flex-start;padding-left:0;font-size:calc(12px*var(--fs,1));font-weight:700;letter-spacing:.08em">MORE · TILE / DEVICE  {{ advMark }}</button>
+        <sc-if value="{{ adv }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div class="field"><label>Device</label>
+              <div class="seg"><sc-for list="{{ devices }}" as="d" hint-placeholder-count="3"><button class="seg-opt" style="{{ d.style }}" onClick="{{ d.pick }}">{{ d.label }}</button></sc-for></div>
+            </div>
+            <div class="field"><label>Tile size</label>
+              <select class="input" onChange="{{ onTile }}" value="{{ tile }}"><sc-for list="{{ tiles }}" as="t" hint-placeholder-count="4"><option value="{{ t }}">{{ t }}</option></sc-for></select>
+            </div>
+            <div class="field"><label>Tile overlap · {{ overlap }}px</label><input type="range" min="0" max="128" step="8" value="{{ overlap }}" onInput="{{ onOverlap }}" style="accent-color:var(--color-accent)"></div>
+            <label style="display:flex;gap:12px;align-items:center;font-size:calc(14px*var(--fs,1))"><input type="checkbox" checked="{{ half }}" onChange="{{ onHalf }}" style="accent-color:var(--color-accent);width:18px;height:18px;margin:0"> fp16 half precision (CUDA only)</label>
+            <button class="btn btn-secondary" onClick="{{ runBenchmark }}" style="align-self:flex-start">Run speed benchmark</button>
+            <sc-if value="{{ benchMsg }}" hint-placeholder-val="{{ false }}"><div style="font-size:calc(12px*var(--fs,1));line-height:1.4">{{ benchMsg }}</div></sc-if>
+          </div>
+        </sc-if>
+      </section>
+    </aside>
+
+    <!-- CANVAS (dominant) -->
+    <section class="col" style="flex:4 1 560px;display:flex;flex-direction:column;min-width:0;border-bottom:2px solid var(--color-divider)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 24px;border-bottom:2px solid var(--color-divider);flex-wrap:wrap">
+        <div data-help="canvas" style="font-size:calc(12px*var(--fs,1));font-weight:700;letter-spacing:.08em">{{ canvasTitle }}</div>
+        <div style="display:flex;gap:8px">
+          <sc-if value="{{ hasFile }}" hint-placeholder-val="{{ false }}">
+            <sc-if value="{{ canAddImages }}" hint-placeholder-val="{{ false }}"><button class="btn btn-secondary" onClick="{{ pickFile }}">Add images</button></sc-if>
+            <button class="btn btn-ghost" onClick="{{ clearFile }}">Clear</button>
+          </sc-if>
+        </div>
+      </div>
+      <input type="file" accept=".png,.jpg,.jpeg,.webp,.tif,.tiff,.bmp,.tga,.psd,.psb,.jp2,.j2k,.jpf,.jpx,image/png,image/jpeg,image/webp,image/tiff,image/bmp" multiple ref="{{ fileRef }}" onChange="{{ onFile }}" style="display:none">
+      <sc-if value="{{ showStrip }}" hint-placeholder-val="{{ false }}"><div data-help="batch" style="display:flex;gap:12px;padding:12px 24px;border-bottom:2px solid var(--color-divider);overflow-x:auto;align-items:stretch">
+        <sc-for list="{{ strip }}" as="f" hint-placeholder-count="3"><div style="{{ f.box }}" onClick="{{ f.pick }}"><div style="{{ f.thumb }}"></div><div style="{{ f.bar }}"></div><div style="padding:6px 8px;font-size:calc(12px*var(--fs,1));line-height:1.3"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700">{{ f.name }}</div><div>{{ f.status }}</div></div><button aria-label="Remove" onClick="{{ f.remove }}" style="position:absolute;top:0;right:0;width:24px;height:24px;border:0;background:var(--color-text);color:var(--color-bg);cursor:pointer;font-size:calc(12px*var(--fs,1))">✕</button></div></sc-for>
+        <sc-if value="{{ canAddImages }}" hint-placeholder-val="{{ false }}"><button class="btn btn-secondary" style="flex:none;width:72px;font-size:calc(24px*var(--fs,1))" onClick="{{ pickFile }}">+</button></sc-if>
+      </div></sc-if>
+
+      <sc-if value="{{ noFile }}" hint-placeholder-val="{{ true }}">
+        <div onDragOver="{{ onDragOver }}" onDragLeave="{{ onDragLeave }}" onDrop="{{ onDrop }}" onClick="{{ pickFile }}" style="{{ dropStyle }}">
+          <div style="font-family:var(--font-heading);font-weight:800;font-size:calc(clamp(28px,4vw,44px)*var(--fs,1));letter-spacing:-0.02em;line-height:1.05">Drop an image<br>to upscale.</div>
+          <div style="font-size:calc(15px*var(--fs,1));max-width:420px;line-height:1.5">PNG, JPG, WebP, TIFF, BMP, TGA, PSD, PSB, JPEG 2000. Alpha channels are preserved. Chains 4× passes up to any scale; outputs over 20,000px save as TIFF.</div>
+          <button class="btn btn-primary" style="min-width:200px" onClick="{{ pickFile }}">Choose file →</button>
+          <div style="font-size:calc(13px*var(--fs,1))">Files stay on your machine</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ hasFile }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:1;display:flex;flex-direction:column;min-height:420px">
+          <div ref="{{ stageRef }}" onPointerDown="{{ cmpDown }}" onPointerMove="{{ cmpMove }}" onPointerUp="{{ cmpUp }}" class="{{ stageClass }}" style="flex:1;position:relative;overflow:hidden;{{ stageBgStyle }}touch-action:none;cursor:{{ stageCursor }};min-height:420px">
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+              <div style="{{ afterStyle }}"></div>
+            </div>
+            <sc-if value="{{ isDone }}" hint-placeholder-val="{{ false }}">
+              <div style="{{ beforeClip }}">
+                <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+                  <div style="{{ beforeStyle }}"></div>
+                </div>
+              </div>
+              <div style="{{ handleStyle }}"><div style="position:absolute;top:50%;left:-19px;width:40px;height:40px;margin-top:-20px;background:var(--color-accent);color:var(--color-bg);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:calc(14px*var(--fs,1))">↔</div></div>
+              <span class="tag tag-neutral" style="position:absolute;left:16px;top:16px">Original · {{ srcDims }}</span>
+              <span class="tag tag-accent" style="position:absolute;right:16px;top:16px">Upscaled · {{ outDims }}</span>
+            </sc-if>
+            <sc-if value="{{ showAlphaTag }}" hint-placeholder-val="{{ false }}"><span class="tag tag-neutral" style="position:absolute;left:16px;bottom:16px">Alpha</span></sc-if>
+            <sc-if value="{{ showCrop }}" hint-placeholder-val="{{ false }}"><div style="{{ cropStyle }}"></div></sc-if>
+            <sc-if value="{{ isRunning }}" hint-placeholder-val="{{ false }}">
+              <div style="position:absolute;inset:0;background:color-mix(in srgb,var(--color-bg) 82%,transparent);display:flex;flex-direction:column;justify-content:flex-end;padding:24px;gap:12px">
+                <div style="font-family:var(--font-heading);font-weight:800;font-size:calc(56px*var(--fs,1));letter-spacing:-0.02em;line-height:1">{{ pct }}%</div>
+                <div style="font-size:calc(14px*var(--fs,1))">{{ stage }}</div>
+              </div>
+            </sc-if>
+          </div>
+          <div style="display:flex;gap:12px 20px;align-items:center;padding:12px 24px;border-top:2px solid var(--color-divider);flex-wrap:wrap">
+              <span style="font-size:calc(12px*var(--fs,1));font-weight:700;letter-spacing:.08em">ZOOM {{ zoomLabel }}</span>
+              <div class="seg"><sc-for list="{{ zooms }}" as="z" hint-placeholder-count="5"><button class="seg-opt" style="{{ z.style }}" onClick="{{ z.pick }}">{{ z.label }}</button></sc-for></div>
+              <div class="seg"><sc-for list="{{ tools }}" as="z" hint-placeholder-count="2"><button class="seg-opt" style="{{ z.style }}" onClick="{{ z.pick }}">{{ z.label }}</button></sc-for></div>
+              <sc-if value="{{ showReset }}" hint-placeholder-val="{{ false }}"><button class="btn btn-secondary" onClick="{{ resetView }}">Reset</button></sc-if>
+              <sc-if value="{{ showFit }}" hint-placeholder-val="{{ false }}"><button class="btn btn-secondary" onClick="{{ fitCrop }}">Zoom to crop</button></sc-if>
+              <span style="font-size:calc(13px*var(--fs,1));margin-left:auto">{{ hint }}</span>
+            </div>
+            <sc-if value="{{ showCmp }}" hint-placeholder-val="{{ false }}"><div style="border-top:2px solid var(--color-divider);padding:24px;display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+                <div style="font-size:calc(12px*var(--fs,1));font-weight:700;letter-spacing:.08em">COMPARISON · {{ cmpProgress }}</div>
+                <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><button class="btn btn-primary" onClick="{{ applyBest }}">{{ applyLabel }}</button><div class="seg"><sc-for list="{{ cmpSizes }}" as="z" hint-placeholder-count="2"><button class="seg-opt" style="{{ z.style }}" onClick="{{ z.pick }}">{{ z.label }}</button></sc-for></div><div class="seg"><sc-for list="{{ cmpZooms }}" as="z" hint-placeholder-count="3"><button class="seg-opt" style="{{ z.style }}" onClick="{{ z.pick }}">{{ z.label }}</button></sc-for></div><button class="btn btn-ghost" onClick="{{ closeCmp }}">Close</button></div>
+              </div>
+              <div style="font-size:calc(12px*var(--fs,1))">Drag any tile to pan all tiles together. Scroll on a tile to zoom all.</div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax({{ cmpMin }}px,1fr));gap:16px">
+                <sc-for list="{{ cmpTiles }}" as="c" hint-placeholder-count="3">
+                  <div style="{{ c.box }}">
+                    <div style="{{ c.outer }}" onPointerDown="{{ c.down }}" onPointerMove="{{ c.move }}" onPointerUp="{{ c.up }}" onWheel="{{ c.wheel }}"><div style="{{ c.inner }}"></div>
+                      <sc-if value="{{ c.pending }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;background:color-mix(in srgb,var(--color-bg) 85%,transparent);display:flex;align-items:flex-end;padding:12px;font-size:calc(13px*var(--fs,1))">{{ c.pendingText }}</div></sc-if>
+                    </div>
+                    <div style="padding:12px;display:flex;flex-direction:column;gap:8px;flex:1">
+                      <div style="font-weight:700;font-size:calc(14px*var(--fs,1));word-break:break-word">{{ c.name }}</div>
+                      <div style="font-size:calc(12px*var(--fs,1))">{{ c.meta }}</div>
+                      <sc-if value="{{ c.canUse }}" hint-placeholder-val="{{ false }}"><button class="btn btn-secondary" style="margin-top:auto" onClick="{{ c.use }}">{{ c.useLabel }}</button></sc-if>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="font-size:calc(12px*var(--fs,1));line-height:1.4">Tiles show the unprocessed crop in this prototype. With the server connected, each tile is that model's real output for the same region and settings. Zoom applies to all tiles.</div>
+            </div></sc-if>
+        </div>
+      </sc-if>
+    </section>
+
+    <!-- RUN + SUMMARY -->
+    <aside class="col" style="flex:0 1 300px;max-width:min(320px,100%);border-left:2px solid var(--color-divider);display:flex;flex-direction:column">
+      <section style="padding:24px;display:flex;flex-direction:column;gap:16px">
+        <div style="font-size:calc(12px*var(--fs,1));font-weight:700;letter-spacing:.08em">04 · RUN</div>
+        <div style="font-family:var(--font-heading);font-weight:800;font-size:calc(40px*var(--fs,1));letter-spacing:-0.02em;line-height:1">{{ scaleLabel }}</div>
+        <div style="font-family:var(--font-heading);font-weight:800;font-size:calc(26px*var(--fs,1));letter-spacing:-0.02em;line-height:1.1">{{ outDims }} px</div>
+        <button data-help="run" class="btn btn-primary btn-block" style="opacity:{{ goOpacity }}" onClick="{{ run }}">{{ goLabel }}</button>
+        <sc-if value="{{ hasInterrupted }}" hint-placeholder-val="{{ false }}"><button class="btn btn-secondary btn-block" onClick="{{ resumeInterrupted }}">{{ resumeLabel }}</button></sc-if>
+        <sc-if value="{{ isRunning }}" hint-placeholder-val="{{ false }}"><div style="display:flex;gap:8px"><button class="btn btn-secondary" style="flex:1" onClick="{{ togglePause }}">{{ pauseLabel }}</button><button class="btn btn-ghost" onClick="{{ cancelRun }}">Cancel</button></div></sc-if>
+        <div data-help="output" style="display:flex;flex-direction:column;gap:12px;border-top:2px solid var(--color-divider);padding-top:12px">
+          <div style="font-size:calc(12px*var(--fs,1));font-weight:700;letter-spacing:.08em">03 · OUTPUT</div>
+          <div class="field"><select class="input" onChange="{{ onFmt }}" value="{{ fmtSel }}"><sc-for list="{{ fmtOptions }}" as="f" hint-placeholder-count="5"><option value="{{ f.v }}">{{ f.l }}</option></sc-for></select></div>
+          <sc-if value="{{ showQ }}" hint-placeholder-val="{{ false }}"><div class="field"><label>Quality · {{ q }}</label><input type="range" min="40" max="100" step="1" value="{{ q }}" onInput="{{ onQ }}" style="accent-color:var(--color-accent)"></div></sc-if>
+          <sc-if value="{{ showTiff }}" hint-placeholder-val="{{ false }}"><div class="field"><label>TIFF compression</label><div class="seg"><sc-for list="{{ tiffs }}" as="d" hint-placeholder-count="3"><button class="seg-opt" style="{{ d.style }}" onClick="{{ d.pick }}">{{ d.label }}</button></sc-for></div></div></sc-if>
+          <span style="font-size:calc(12px*var(--fs,1));line-height:1.4">Auto saves PNG, or TIFF above 20,000 px on the long edge.</span>
+        </div>
+        <sc-if value="{{ isDone }}" hint-placeholder-val="{{ false }}">
+          <button class="btn btn-secondary btn-block" onClick="{{ download }}">{{ dlLabel }}</button>
+        </sc-if>
+        
+        <div style="display:grid;grid-template-columns:1fr 1fr;border-top:2px solid var(--color-divider)">
+          <div style="padding:12px 0;border-bottom:1px solid var(--color-neutral-300)"><div style="font-size:calc(12px*var(--fs,1))">Source</div><div style="font-weight:700">{{ srcDims }}</div></div>
+          <div style="padding:12px 0;border-bottom:1px solid var(--color-neutral-300)"><div style="font-size:calc(12px*var(--fs,1))">Result</div><div style="font-weight:700">{{ outDims }}</div></div>
+          <div style="padding:12px 0;border-bottom:1px solid var(--color-neutral-300)"><div style="font-size:calc(12px*var(--fs,1))">Model passes</div><div style="font-weight:700">{{ passes }}</div></div>
+          <div style="padding:12px 0;border-bottom:1px solid var(--color-neutral-300)"><div style="font-size:calc(12px*var(--fs,1))">Est. file size</div><div style="font-weight:700">{{ format }} {{ fileSize }}</div></div>
+          <div style="padding:12px 0"><div style="font-size:calc(12px*var(--fs,1))">Megapixels</div><div style="font-weight:700">{{ mp }}</div></div>
+          <div style="padding:12px 0"><div style="font-size:calc(12px*var(--fs,1))">Est. time</div><div style="font-weight:700">{{ eta }}</div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;border-top:2px solid var(--color-divider);padding-top:12px"><div style="font-size:calc(12px*var(--fs,1));font-weight:700;letter-spacing:.08em">PRINT SIZE AT</div><div class="seg"><sc-for list="{{ dpis }}" as="d" hint-placeholder-count="4"><button class="seg-opt" style="{{ d.style }}" onClick="{{ d.pick }}">{{ d.label }}</button></sc-for></div><div style="font-weight:700">{{ printSize }}</div></div>
+        <sc-if value="{{ isBatch }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:8px;border-top:2px solid var(--color-divider);padding-top:12px">
+<div style="font-size:calc(12px*var(--fs,1));font-weight:700;letter-spacing:.08em">{{ batchTitle }}</div>
+<div style="font-size:calc(14px*var(--fs,1));line-height:1.5">{{ batchTotal }}</div>
+<sc-for list="{{ batchRows }}" as="r" hint-placeholder-count="3"><div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--color-neutral-300);font-size:calc(13px*var(--fs,1))"><div style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700">{{ r.name }}</div><div style="flex:none;text-align:right">{{ r.dims }}<br>{{ r.size }}</div></div></sc-for>
+</div></sc-if>
+<sc-if value="{{ showPre }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:10px;border-top:2px solid var(--color-divider);padding-top:12px">
+<div data-help="preflight" style="font-size:calc(12px*var(--fs,1));font-weight:700;letter-spacing:.08em">BEFORE YOU START</div>
+<div style="font-size:calc(14px*var(--fs,1));line-height:1.5"><b>Time</b> {{ timeFull }}<br><b>File</b> {{ fileFull }}</div>
+<div style="font-size:calc(12px*var(--fs,1))">Needed vs available · {{ sysLabel }}</div>
+<sc-for list="{{ rows }}" as="r" hint-placeholder-count="4"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--color-neutral-300);font-size:calc(13px*var(--fs,1))"><div style="min-width:0"><div style="font-weight:700">{{ r.label }}</div><div>{{ r.need }}{{ r.have }}</div></div><span class="{{ r.cls }}" style="flex:none">{{ r.status }}</span></div></sc-for>
+<sc-if value="{{ blocked }}" hint-placeholder-val="{{ false }}"><div style="border:2px solid var(--color-accent);padding:12px;font-size:calc(13px*var(--fs,1));line-height:1.45;display:flex;flex-direction:column;gap:10px"><div>{{ blockedMsg }}</div><button class="btn btn-secondary" onClick="{{ runAnyway }}">Run anyway</button></div></sc-if>
+</div></sc-if>
+<sc-if value="{{ warn }}" hint-placeholder-val="{{ false }}"><div style="border:2px solid var(--color-accent);padding:12px;font-size:calc(13px*var(--fs,1));line-height:1.4;color:var(--color-accent-700)">{{ warn }}</div></sc-if>
+        <div style="font-size:calc(13px*var(--fs,1));line-height:1.5;border-top:2px solid var(--color-divider);padding-top:12px">CLI equivalent<br><code style="font-size:calc(12px*var(--fs,1));word-break:break-all">{{ cli }}</code></div>
+      </section>
+
+      <section style="border-top:2px solid var(--color-divider);padding:24px;display:flex;flex-direction:column;gap:12px;flex:1">
+        <div style="font-size:calc(12px*var(--fs,1));font-weight:700;letter-spacing:.08em">HISTORY</div>
+        <sc-if value="{{ noHistory }}" hint-placeholder-val="{{ true }}"><div style="font-size:calc(14px*var(--fs,1))">Finished jobs appear here.</div></sc-if>
+        <sc-for list="{{ history }}" as="h" hint-placeholder-count="0">
+          <button type="button" onClick="{{ h.open }}" style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border:0;border-bottom:1px solid var(--color-neutral-300);font-size:calc(13px*var(--fs,1));width:100%;text-align:left;background:transparent;color:inherit;font-family:inherit;cursor:pointer">
+            <div style="min-width:0"><div style="font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ h.name }}</div><div>{{ h.info }}</div></div>
+            <span class="tag tag-neutral" style="align-self:flex-start">{{ h.time }}</span>
+          </button>
+        </sc-for>
+      </section>
+    </aside>
+  </main>
+  <sc-if value="{{ helpOpen }}" hint-placeholder-val="{{ false }}"><div style="{{ helpBox }}">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><div style="font-size:calc(12px*var(--fs,1));font-weight:700;letter-spacing:.08em">HELP · {{ helpStep }}</div><button class="btn btn-ghost" onClick="{{ closeHelp }}">Close</button></div>
+    <h3 style="margin:0;font-size:calc(26px*var(--fs,1))">{{ helpTitle }}</h3>
+    <sc-for list="{{ helpBody }}" as="p" hint-placeholder-count="2"><p style="margin:0;font-size:calc(14px*var(--fs,1));line-height:1.55">{{ p.text }}</p></sc-for>
+    <sc-if value="{{ helpMissing }}" hint-placeholder-val="{{ false }}"><div style="border:2px solid var(--color-accent);padding:12px;font-size:calc(13px*var(--fs,1))">Load an image first to see this part highlighted.</div></sc-if>
+    <div style="display:flex;gap:8px"><button class="btn btn-secondary" style="flex:1" onClick="{{ prevHelp }}">Back</button><button class="btn btn-primary" style="flex:1" onClick="{{ nextHelp }}">Next</button></div>
+    <div style="border-top:2px solid var(--color-divider);padding-top:16px;display:flex;flex-direction:column;gap:8px"><div style="font-size:calc(12px*var(--fs,1));font-weight:700;letter-spacing:.08em">ALL TOPICS</div>
+      <sc-for list="{{ topics }}" as="h" hint-placeholder-count="6"><button class="btn btn-secondary" style="{{ h.style }};justify-content:flex-start" onClick="{{ h.pick }}">{{ h.label }}</button></sc-for></div>
+  </div></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  fileRef = React.createRef(); stageRef = React.createRef(); settingsFileRef = React.createRef();
+  MODELS = [
+    ['RealESRGAN_x4plus','General photorealistic 4x. RRDB-23, strong detail hallucination.','Photo'],
+    ['RealESRGAN_x4plus_anime_6B','Anime / illustration 4x. Lighter 6-block RRDB, sharp clean lines.','Anime'],
+    ['RealESRNet_x4plus','Faster/smoother variant of x4plus; less aggressive sharpening.','Photo'],
+    ['realesr-general-x4v3','Newer general-purpose model (2022). Lighter than x4plus, less over-sharpening.','General'],
+    ['realesr-general-wdn-x4v3','Like general-x4v3 but trained with denoising; good for noisy/compressed input.','Denoise'],
+    ['realesr-animevideov3','Anime video frames 4x. Temporally consistent, fewer halos than anime_6B.','Anime'],
+    ['HAT-Real_GAN_sharper','HAT-L real-world 4x (sharper variant). Transformer SR, high fidelity + detail.','Transformer'],
+    ['4x-spanx4-ch48','Official SPAN pretrain 4x (ch48). Very fast, 8.6 MB. Good general-purpose baseline.','Fast'],
+    ['4xNomosUni_span_multijpg','SPAN 4x fine-tuned on NomosUni with multi-JPEG degradation. Good for compressed photos.','Compressed'],
+    ['4x-UltraSharp','Popular community photo model (2022). Strong texture detail, can over-sharpen.','Photo'],
+    ['4x-UltraSharpV2','Updated UltraSharp (2023). Less ringing, better compression handling.','Photo'],
+    ['4x-ClearRealityV1','Kim2091 2023 photo model. Cleaner than UltraSharp, less over-sharpening.','Photo']
+  ];
+  DOWNLOADED = [];
+  ERR={};
+  mstat(n){if(n==='__custom')return'ok';const a=this.state.added.find(x=>x[0]===n);if(a)return a[3]==='file'?'ok':'dl';if(window.UpscaleUI)return window.UpscaleUI.modelStatus(n);return this.DOWNLOADED.includes(n)?'ok':'dl';}
+  state = { file:null, url:null, name:'', w:0, h:0, mode:'scale', scale:4, target:8000, model:'RealESRGAN_x4plus', custom:'', adv:false,
+    device:'auto', tile:'auto', overlap:32, half:false, tiff:'lzw', status:'idle', pct:0, stage:'', drag:false, split:50, zoom:1, history:[],filt:{denoise:{on:false,v:30},jpeg:{on:false,v:40},deblur:{on:false,v:35},edge:{on:false,v:25},grain:{on:false,v:10},color:{on:false,v:25},halo:{on:false,v:40}},cpx:0,cpy:0,cmpBig:false,fixing:null,paused:false,interrupted:null,helpOpen:false,helpIdx:0,helpSide:'right',files:[],activeId:null,bidx:0,theme:'light',fsize:'normal',lang:'en',setOpen:false,cmp:[],cmpZ:1,cmpSel:['RealESRGAN_x4plus','4x-UltraSharp','realesr-general-x4v3','4x-spanx4-ch48'],cmpAlgoSel:[],blocked:false,px:0,py:0,tool:'select',dpi:300,dw:0,dh:0,test:false,cropSize:128,cx:.5,cy:.5,fmt:'auto',q:90,denoise:0.5,added:[],method:'neural',algorithm:'lanczos3',hasAlpha:false,vecEngine:'vtracer',vecMode:'spline',vecColors:6,vecSpeckle:4,vecCorners:60,vecTrace:1024,hiddenModels:[],cmpIncludeFilters:false,suggestReason:'',suggestModel:null,onnxBanner:true,modelMeta:{} };
+  ALGOS=[['nearest','Nearest-neighbor','builtin'],['bilinear','Bilinear','builtin'],['bicubic','Bicubic','builtin'],['lanczos2','Lanczos-2','builtin'],['lanczos3','Lanczos-3','builtin'],['texture_residual','Texture residual','paper'],['vectorize_scale','Vectorize & scale','paper']];
+  ALGO_DESC={nearest:'Blocky, preserves hard edges — good for pixel art.',bilinear:'Smooth linear interpolation.',bicubic:'Smoother curves than bilinear; common photo default.',lanczos2:'Sharper Lanczos (approx.).',lanczos3:'High-quality Lanczos — good general classical choice.',texture_residual:'Lanczos structure plus high-frequency residual from the source. Adds crisp local detail; can look grainy on smooth photos.',vectorize_scale:'Trace to SVG (VTracer or PyAutoTrace), then rasterize at the target size. Best for logos and flat graphics — not photos.'};
+  algoList(){return (this.state.apiAlgorithms&&this.state.apiAlgorithms.length)?this.state.apiAlgorithms:this.ALGOS.map(([n,l,g])=>({name:n,label:l,group:g||'builtin',description:this.ALGO_DESC[n]||''}));}
+  algoSelectOptions(){const list=this.algoList(), order=['builtin','paper','plugin'], labels={builtin:'── Built-in ──',paper:'── Paper ──',plugin:'── Plugin ──'}; const out=[]; for(const g of order){const opts=list.filter(a=>(a.group||'builtin')===g); if(!opts.length)continue; out.push({name:'',label:labels[g]||('── '+g+' ──'),disabled:true}); for(const a of opts)out.push({name:a.name,label:a.label,disabled:false});} const rest=list.filter(a=>!order.includes(a.group||'builtin')); if(rest.length){out.push({name:'',label:'── Other ──',disabled:true}); for(const a of rest)out.push({name:a.name,label:a.label,disabled:false});} return out;}
+  base(){const a=this.state.added.find(x=>x[0]===this.state.model);return a?a[4]:4;}
+  eff(){const s=this.state;return s.test&&s.w?[Math.min(s.cropSize,s.w),Math.min(s.cropSize,s.h)]:[s.w,s.h];}
+  passesFor(s){ return s<=1?0:Math.ceil(Math.log(s)/Math.log(this.base())-1e-9); }
+  componentDidUpdate(){this.applyPrefs();this.applyHelp();const el=this.stageRef.current;if(el&&el!==this._wEl){this._wEl=el;el.addEventListener('wheel',this.onWheel,{passive:false});}}
+  onWheel=(e)=>{e.preventDefault();const s=this.state,r=this.stageRef.current.getBoundingClientRect();const mx=e.clientX-r.left-r.width/2,my=e.clientY-r.top-r.height/2;const nz=Math.max(1,Math.min(32,s.zoom*(e.deltaY<0?1.25:0.8)));const k=nz/s.zoom;this.setState({zoom:nz,px:nz===1?0:mx-(mx-s.px)*k,py:nz===1?0:my-(my-s.py)*k});};
+  MFMAP={'HAT-Real_GAN_sharper':3,'RealESRGAN_x4plus_anime_6B':.5,'4x-spanx4-ch48':.15,'realesr-general-x4v3':.3,'realesr-general-wdn-x4v3':.3,'realesr-animevideov3':.3};
+  calcSecs(n){const s=this.state,[ew,eh]=this.eff(),P=this.passesFor(this.curScale());let w=0;for(let i=0;i<P;i++)w+=ew*eh/1e6*Math.pow(16,i);const hf=s.half&&s.device!=='cpu';return w/((s.device==='cpu'?.04:.8)*(hf?1.7:1)/(this.MFMAP[n]||1))+1;}
+  autoRegion=()=>new Promise(res=>{const s=this.state;if(!s.url)return res();if(s.status==='running'||s.status==='done')return res();if(s.cmp&&s.cmp.length)return res();if(s.displayUrl||s.resultUrl||s.urlAfter)return res();const im=new Image();im.onload=()=>{const L=200,sc=L/Math.max(im.naturalWidth,im.naturalHeight),W=Math.max(8,Math.round(im.naturalWidth*sc)),H=Math.max(8,Math.round(im.naturalHeight*sc)),cv=document.createElement('canvas');cv.width=W;cv.height=H;const g=cv.getContext('2d');g.drawImage(im,0,0,W,H);const d=g.getImageData(0,0,W,H).data,gr=new Float32Array(W*H),e=new Float32Array(W*H);for(let i=0;i<W*H;i++)gr[i]=.3*d[i*4]+.59*d[i*4+1]+.11*d[i*4+2];for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){const i=y*W+x;e[i]=Math.abs(gr[i+1]-gr[i-1])+Math.abs(gr[i+W]-gr[i-W]);}
+    const cw=Math.max(3,Math.round(Math.min(1,Math.min(s.cropSize,im.naturalWidth)/im.naturalWidth)*W)),ch=Math.max(3,Math.round(Math.min(1,Math.min(s.cropSize,im.naturalHeight)/im.naturalHeight)*H)),I=new Float64Array((W+1)*(H+1));
+    for(let y=0;y<H;y++){let r=0;for(let x=0;x<W;x++){r+=e[y*W+x];I[(y+1)*(W+1)+x+1]=I[y*(W+1)+x+1]+r;}}
+    let best=-1,bx=0,by=0;for(let y=0;y+ch<=H;y+=2)for(let x=0;x+cw<=W;x+=2){const v=I[(y+ch)*(W+1)+x+cw]-I[y*(W+1)+x+cw]-I[(y+ch)*(W+1)+x]+I[y*(W+1)+x];if(v>best){best=v;bx=x;by=y;}}
+    this.setState({cx:(bx+cw/2)/W,cy:(by+ch/2)/H,cpx:0,cpy:0},res);};im.src=s.url;});
+  startCmp=()=>{ if(window.UpscaleBackend) window.UpscaleBackend.compareModels(this); };
+  findBest=()=>{const s=this.state;const running=s.status==='running',done=s.status==='done',hasCmp=!!(s.cmp&&s.cmp.length),hasResult=!!(s.displayUrl||s.resultUrl||s.urlAfter);if(running||done||hasCmp||hasResult){alert('Crop is locked while a result is shown. Close comparison or change crop size first.');return;}if(!s.file){this.fileRef.current&&this.fileRef.current.click();return;}const n=(s.cmpSel||[]).length+(s.cmpAlgoSel||[]).length;if(!n){alert('Select at least one model or classical scaler to compare.');return;}if(n>8&&!confirm('Compare '+n+' variants? This may take a while.'))return;this.setState({test:true,tool:'select'},()=>this.startCmp());};
+  _makeCropBeforeUrl=()=>{const s=this.state;if(!s.url||!s.w)return;const size=+s.cropSize||128;const cx=s.cx!=null?s.cx:0.5,cy=s.cy!=null?s.cy:0.5;const x=Math.max(0,Math.round(cx*s.w-size/2)),y=Math.max(0,Math.round(cy*s.h-size/2));const w=Math.min(size,s.w-x),h=Math.min(size,s.h-y);const im=new Image();im.onload=()=>{const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(im,x,y,w,h,0,0,w,h);cv.toBlob(b=>{if(!b)return;const u=URL.createObjectURL(b);const prev=this.state.cropBeforeUrl;this.setState({cropBeforeUrl:u},()=>{if(prev&&prev.indexOf('blob:')===0)try{URL.revokeObjectURL(prev);}catch(e){}});});};im.src=s.url;};
+  
+  DICT={"Free image upscaler · Real-ESRGAN, HAT, SPAN":"Darmowy skaler obrazów · Real-ESRGAN, HAT, SPAN","Files stay on your machine":"Pliki zostają na Twoim komputerze","Auto device":"Urządzenie: auto","Settings":"Ustawienia","Theme":"Motyw","Light":"Jasny","Dark":"Ciemny","Text size":"Rozmiar tekstu","Normal":"Normalny","Larger":"Większy","Largest":"Największy","Language":"Język","01 · SIZE":"01 · ROZMIAR","Scale":"Skala","Long edge":"Dłuższy bok","W × H":"Szer. × Wys.","Custom scale (×)":"Skala własna (×)","Long edge (px)":"Dłuższy bok (px)","Width (px)":"Szerokość (px)","Height (px)":"Wysokość (px)","Aspect ratio is kept: changing one side updates the other.":"Proporcje są zachowane: zmiana jednego boku zmienia drugi.","02 · TEST ON A CROP":"02 · TEST NA WYCINKU","Process a small region only":"Przetwórz tylko mały fragment","Crop size (px)":"Rozmiar wycinka (px)","Click or drag on the image to place the crop. Compare models and settings in seconds, then switch this off for the full run.":"Kliknij lub przeciągnij na obrazie, aby ustawić wycinek. Porównaj modele i ustawienia w kilka sekund, potem wyłącz ten tryb dla pełnego przebiegu.","Compare models on this crop":"Porównaj modele na tym wycinku","All":"Wszystkie","None":"Brak","03 · MODEL":"03 · MODEL","Path to model file":"Ścieżka do pliku modelu","Custom .pth / .safetensors…":"Własny .pth / .safetensors…","Any spandrel-compatible .pth or .safetensors file on the server.":"Dowolny plik .pth lub .safetensors zgodny ze spandrel na serwerze.","Photo":"Zdjęcia","General":"Ogólny","Denoise":"Odszumianie","Fast":"Szybki","Compressed":"Skompresowane","Custom":"Własny","Added":"Dodany","Downloaded":"Pobrany","Downloads on first use":"Pobierze się przy pierwszym użyciu","Local file":"Plik lokalny","MODEL PARAMETERS":"PARAMETRY MODELU","Mixes the model output with a plain resize. Lower values reduce invented texture.":"Miesza wynik modelu ze zwykłym skalowaniem. Niższe wartości zmniejszają wymyślane tekstury.","Blend with second model":"Mieszaj z drugim modelem","+ Add model":"+ Dodaj model","Cancel":"Anuluj","Name":"Nazwa","Download URL or file path":"Adres URL lub ścieżka pliku","Native scale":"Skala natywna","Architecture is detected from the weights (.pth, .safetensors). URLs download to the models folder and are hashed on first use.":"Architektura jest wykrywana z wag (.pth, .safetensors). Adresy URL pobierają się do folderu modeli i są weryfikowane skrótem przy pierwszym użyciu.","Add to library":"Dodaj do biblioteki","General photorealistic 4x. RRDB-23, strong detail hallucination.":"Ogólny model fotorealistyczny 4x. RRDB-23, silne dorysowywanie detali.","Anime / illustration 4x. Lighter 6-block RRDB, sharp clean lines.":"Anime / ilustracje 4x. Lżejszy RRDB z 6 blokami, ostre czyste linie.","Faster/smoother variant of x4plus; less aggressive sharpening.":"Szybszy i gładszy wariant x4plus; mniej agresywne wyostrzanie.","Newer general-purpose model (2022). Lighter than x4plus, less over-sharpening.":"Nowszy model ogólny (2022). Lżejszy niż x4plus, mniej przeostrzenia.","Like general-x4v3 but trained with denoising; good for noisy/compressed input.":"Jak general-x4v3, ale trenowany do odszumiania; dobry dla zaszumionych lub skompresowanych obrazów.","Anime video frames 4x. Temporally consistent, fewer halos than anime_6B.":"Klatki wideo anime 4x. Spójne w czasie, mniej aureoli niż anime_6B.","HAT-L real-world 4x (sharper variant). Transformer SR, high fidelity + detail.":"HAT-L 4x dla realnych zdjęć (wariant ostrzejszy). Transformer SR, wysoka wierność i detal.","Official SPAN pretrain 4x (ch48). Very fast, 8.6 MB. Good general-purpose baseline.":"Oficjalny SPAN 4x (ch48). Bardzo szybki, 8,6 MB. Dobra baza ogólnego użytku.","SPAN 4x fine-tuned on NomosUni with multi-JPEG degradation. Good for compressed photos.":"SPAN 4x dotrenowany na NomosUni z degradacją multi-JPEG. Dobry dla skompresowanych zdjęć.","Popular community photo model (2022). Strong texture detail, can over-sharpen.":"Popularny model społeczności do zdjęć (2022). Mocne detale tekstur, może przeostrzać.","Updated UltraSharp (2023). Less ringing, better compression handling.":"Zaktualizowany UltraSharp (2023). Mniej artefaktów, lepsza obsługa kompresji.","Kim2091 2023 photo model. Cleaner than UltraSharp, less over-sharpening.":"Model do zdjęć Kim2091 (2023). Czystszy niż UltraSharp, mniej przeostrzenia.","05 · OUTPUT FORMAT":"05 · FORMAT WYJŚCIOWY","04 · FILTERS":"04 · FILTRY","Reset filters":"Resetuj filtry","Before":"Przed","After":"Po","JPEG artifact removal":"Usuwanie artefaktów JPEG","Deblur":"Odszarzanie","Edge enhance":"Wzmocnienie krawędzi","Halo reduce":"Redukcja aureoli","Color and contrast":"Kolor i kontrast","Film grain":"Ziarno filmowe","Removes sensor noise before upscaling so the model does not enlarge it.":"Usuwa szum matrycy przed powiększeniem, aby model go nie powiększał.","Smooths blocks and ringing left by JPEG compression before upscaling.":"Wygładza bloki i pierścienie po kompresji JPEG przed powiększeniem.","Unsharp sharpening for soft or slightly motion-blurred sources before the model.":"Wyostrzanie unsharp dla miękkich lub lekko rozmazanych źródeł przed modelem.","Sharpens outlines after upscaling. Keep it low to avoid halos.":"Wyostrza kontury po powiększeniu. Używaj małych wartości, aby uniknąć aureoli.","Pulls bright/dark ringing toward the neighbourhood so edges look cleaner.":"Przyciąga jasne/ciemne aureole do otoczenia, by krawędzie były czystsze.","Mild color and contrast boost after upscaling.":"Lekkie wzmocnienie koloru i kontrastu po powiększeniu.","Adds fine grain after upscaling to hide a smooth, plastic look.":"Dodaje drobne ziarno po powiększeniu, aby ukryć gładki, plastikowy wygląd.","Loading model…":"Ładowanie modelu…","Applying filters…":"Stosowanie filtrów…","Writing output…":"Zapisywanie wyniku…","Downloading model…":"Pobieranie modelu…","Working…":"Praca…","Auto":"Auto","PNG · lossless":"PNG · bezstratny","TIFF · lossless, large files":"TIFF · bezstratny, duże pliki","TIFF compression":"Kompresja TIFF","Auto saves PNG, or TIFF above 20,000 px on the long edge.":"Auto zapisuje PNG lub TIFF powyżej 20 000 px dłuższego boku.","Device":"Urządzenie","Tile size":"Rozmiar kafla","fp16 half precision (CUDA only)":"fp16 połowiczna precyzja (tylko CUDA)","SOURCE":"ŹRÓDŁO","Add images":"Dodaj obrazy","Clear":"Wyczyść","Drop an image":"Upuść obraz","to upscale.":"aby go powiększyć.","PNG, JPG, WebP, TIFF, BMP. Alpha channels are preserved. Chains 4× passes up to any scale; outputs over 20,000px save as TIFF.":"PNG, JPG, WebP, TIFF, BMP. Kanały alfa są zachowane. Łączy przebiegi 4× do dowolnej skali; wyniki powyżej 20 000 px zapisują się jako TIFF.","Choose file →":"Wybierz pliki →","Loading model":"Ładowanie modelu","Select":"Wybierz","Pan":"Przesuń","Zoom to crop":"Przybliż wycinek","Done":"Gotowe","Queued":"W kolejce","Ready":"Gotowy","Drag to compare. Scroll to zoom, Shift-drag to pan.":"Przeciągnij, aby porównać. Przewijaj, by powiększać; Shift+przeciąganie przesuwa.","Click or drag to place the crop. Scroll to zoom.":"Kliknij lub przeciągnij, aby ustawić wycinek. Przewijaj, by powiększać.","Scroll to zoom, Shift-drag to pan.":"Przewijaj, by powiększać; Shift+przeciąganie przesuwa.","Close":"Zamknij","Processing…":"Przetwarzanie…","Original":"Oryginał","Use this model":"Użyj tego modelu","Selected":"Wybrany","Tiles show the unprocessed crop in this prototype. With the server connected, each tile is that model's real output for the same region and settings. Zoom applies to all tiles.":"Kafelki pokazują nieprzetworzony wycinek w tym prototypie. Po połączeniu z serwerem każdy kafelek to prawdziwy wynik danego modelu dla tego samego fragmentu i ustawień. Zoom działa na wszystkie kafelki.","OUTPUT":"WYNIK","Source":"Źródło","Result":"Wynik","Model passes":"Przebiegi modelu","Est. file size":"Szac. rozmiar pliku","Megapixels":"Megapiksele","Est. time":"Szac. czas","none":"brak","PRINT SIZE AT":"ROZMIAR WYDRUKU PRZY","BEFORE YOU START":"ZANIM ZACZNIESZ","Time":"Czas","File":"Plik","Memory (RAM)":"Pamięć (RAM)","Disk space":"Miejsce na dysku","Model weights":"Wagi modelu","On disk":"Na dysku","TIGHT":"NA GRANICY","NOT ENOUGH":"ZA MAŁO","DOWNLOAD":"POBIERANIE","READY":"GOTOWE","Run anyway":"Uruchom mimo to","Scale below 1× is a downscale. Lanczos only, no model.":"Skala poniżej 1× to pomniejszanie. Tylko Lanczos, bez modelu.","Upscale image":"Powiększ obraz","Upscale again":"Powiększ ponownie","CLI equivalent":"Odpowiednik w CLI","HISTORY":"HISTORIA","Finished jobs appear here.":"Zakończone zadania pojawią się tutaj."};
+  PH=[["Not enough ","Za mało: "],["Lower the scale or output size, or test a crop.","Zmniejsz skalę lub rozmiar wyniku albo przetestuj wycinek."],["Pick a smaller tile or turn on fp16.","Wybierz mniejszy kafel lub włącz fp16."],["Free disk space or choose JPEG or WebP.","Zwolnij miejsce na dysku lub wybierz JPEG albo WebP."],["memory","pamięci"],["disk space","miejsca na dysku"],["gpu","GPU"],["failed to load","nie wczytał się"],["Pick another model or re-download it.","Wybierz inny model lub pobierz go ponownie."]];
+  PATS=[[/^(\d+) models$/,"$1 modeli"],[/^Compare (\d+) models? on crop$/,"Porównaj modele na wycinku ($1)"],[/^Denoise strength · (.+)$/,"Siła odszumiania · $1"],[/^Detail strength · (.+)$/,"Siła detali · $1"],[/^Second model weight · (.+)$/,"Udział drugiego modelu · $1"],[/^Quality · (.+)$/,"Jakość · $1"],[/^Tile overlap · (.+)$/,"Nakładanie kafli · $1"],[/^06 · ADVANCED(.*)$/,"06 · ZAAWANSOWANE$1"],[/^(.*) · TEST CROP$/,"$1 · WYCINEK TESTOWY"],[/^Original · (.+)$/,"Oryginał · $1"],[/^Upscaled · (.+)$/,"Powiększony · $1"],[/^Pass (\d+) of (\d+) · blending tiles$/,"Przebieg $1 z $2 · łączenie kafli"],[/^Image (\d+) of (\d+) · (.*)$/,"Obraz $1 z $2 · $3"],[/^MODEL COMPARISON · (\d+) of (\d+) done$/,"PORÓWNANIE MODELI · gotowe $1 z $2"],[/^(.+) px, nearest-neighbour$/,"$1 px, najbliższy sąsiad"],[/^(.+)× upscale$/,"Powiększenie $1×"],[/^(.+) \+ resize$/,"$1 + skalowanie"],[/^Download (\d+ MB) on first run$/,"Pobranie $1 przy pierwszym uruchomieniu"],[/^GPU memory · tile (\d+)$/,"Pamięć GPU · kafel $1"],[/^of (.+) free$/,"z $1 wolnych"],[/^Needed vs available · (.+)$/,"Potrzeba vs dostępne · $1"],[/^Upscaling… (.+)$/,"Powiększanie… $1"],[/^Upscale (\d+) images$/,"Powiększ obrazy ($1)"],[/^Download (\w+)$/,"Pobierz $1"],[/^Download all \((\d+) files\)$/,"Pobierz wszystko ($1 plików)"],[/^BATCH · (\d+) IMAGES$/,"PARTIA · OBRAZÓW: $1"],[/^(\d+) images · (.+)$/,"Obrazów: $1 · $2"],[/^Very large output \((\d+) MP\)\. Needs lots of RAM; TIFF output with LZW recommended\.$/,"Bardzo duży wynik ($1 MP). Wymaga dużo RAM; zalecany TIFF z LZW."],[/^(\S*) ?\(range (.+?) to (.+?)\)( on (GPU|CPU))?$/,(m,a,b,c,d,e)=>(a?a+' ':'')+'(zakres '+b+' do '+c+')'+(e?' na '+e:'')],[/^Added model · (.*)$/,"Dodany model · $1"]];
+  DICT_X={"Simple view":"Widok prosty","System":"Systemowy","Auto-pick detailed area":"Wybierz najbardziej szczegółowy fragment","Find best model":"Znajdź najlepszy model","MODE":"TRYB","Test":"Test","TEST ON A CROP":"TEST NA WYCINKU","Variants to compare":"Warianty do porównania","Model library…":"Biblioteka modeli…","Models":"Modele","MODELS":"MODELE","Visible in lists":"Widoczne na listach","Display name":"Nazwa wyświetlana","Description":"Opis","Hide models to simplify lists. Display name and description are saved on this device. Hiding does not delete weights.":"Ukryj modele, aby uprościć listę. Nazwa i opis zapisują się na tym urządzeniu. Ukrycie nie usuwa wag.","Click or drag on the image to place the crop. Find best model runs selected variants on this region.":"Kliknij lub przeciągnij na obrazie, aby ustawić wycinek. Znajdź najlepszy model uruchamia wybrane warianty na tym regionie.","Drag any tile to pan all tiles together. Scroll on a tile to zoom all.":"Przeciągnij dowolny kafelek, aby przesunąć wszystkie. Przewiń kafelek, aby powiększyć wszystkie.","Drag any tile to pan all tiles together.":"Przeciągnij dowolny kafelek, aby przesunąć wszystkie naraz.","Small":"Małe","Large":"Duże","FAILED":"BŁĄD","Download now":"Pobierz teraz","Re-download":"Pobierz ponownie","Downloading…":"Pobieranie…","Models marked ↓ download first. Models marked ✕ failed to load and are skipped.":"Modele oznaczone ↓ najpierw się pobierają. Modele oznaczone ✕ nie wczytały się i są pomijane.","Help":"Pomoc","Back":"Wstecz","Next":"Dalej","ALL TOPICS":"WSZYSTKIE TEMATY","Pause":"Wstrzymaj","Resume":"Wznów","Choose weights file…":"Wybierz plik wag…","Load an image first to see this part highlighted.":"Najpierw wczytaj obraz, aby zobaczyć to miejsce wyróżnione.","PyTorch .pth files can run code when loaded. Add them only from sources you trust; .safetensors files are safe.":"Pliki PyTorch .pth mogą uruchamiać kod przy wczytaniu. Dodawaj je tylko z zaufanych źródeł; pliki .safetensors są bezpieczne.","Choose files":"Wybierz pliki"};
+  PATS_X=[[/^Amount · (.+)$/,"Ilość · $1"],[/^(.+) · soon$/,"$1 · wkrótce"],[/^Use (.+) for the full image$/,"Użyj modelu $1 dla całego obrazu"],[/^(.+) · fastest$/,"$1 · najszybszy"],[/^Not on disk yet\. It downloads \(about (\d+) MB\) when you start, so the first run takes longer\.$/,"Nie ma go jeszcze na dysku. Pobierze się (ok. $1 MB) po starcie, więc pierwszy przebieg potrwa dłużej."],[/^This model failed to load: (.*)\. Choose another model or download it again\.$/,"Ten model nie wczytał się: $1. Wybierz inny model lub pobierz go ponownie."],[/^(\d+) need attention$/,"$1 wymaga uwagi"],[/^(.+) · not downloaded$/,"$1 · nie pobrano"],[/^(.+) · failed to load$/,"$1 · błąd wczytania"],[/^Paused · (.*)$/,"Wstrzymano · $1"],[/^HELP · Step (\d+) of (\d+)$/,"POMOC · krok $1 z $2"]];
+  HELP=[{"k":"canvas","mode":"section","en":["Adding images",["Drop one or more images on the canvas or use Choose files. PNG, JPG, WebP, TIFF, BMP, TGA, PSD, PSB and JPEG 2000 work; transparency is kept. Add several to run them as a batch with the same settings.","Scroll to zoom. Hold Shift and drag, or use the Pan tool, to move around. After a run, drag the divider to compare original and result."]],"pl":["Dodawanie obrazów",["Upuść jeden lub więcej obrazów na obszar roboczy albo użyj przycisku Wybierz pliki. Działają PNG, JPG, WebP, TIFF, BMP, TGA, PSD, PSB i JPEG 2000; przezroczystość jest zachowana. Dodaj kilka, aby przetworzyć je partią z tymi samymi ustawieniami.","Przewijaj, aby powiększać. Przytrzymaj Shift i przeciągaj albo użyj narzędzia Przesuń. Po przebiegu przeciągnij suwak, aby porównać oryginał z wynikiem."]]},{"k":"size","mode":"section","en":["Output size",["Choose how large the result is: Scale (a multiplier such as 4×), Long edge (the longer side in pixels) or W × H (exact width and height, aspect ratio kept). In a batch, Scale applies one factor to every image, while Long edge and W × H give each image its own factor.","Models work in fixed 4× steps. Other factors use as many passes as needed, then a final resize to the exact size."]],"pl":["Rozmiar wyniku",["Wybierz wielkość wyniku: Skala (mnożnik, np. 4×), Dłuższy bok (w pikselach) albo Szer. × Wys. (dokładne wymiary, proporcje zachowane). W partii Skala daje ten sam mnożnik wszystkim obrazom, a Dłuższy bok i Szer. × Wys. liczą go osobno dla każdego.","Modele pracują w stałych krokach 4×. Inne mnożniki używają tylu przebiegów, ile trzeba, a na końcu następuje skalowanie do dokładnego rozmiaru."]]},{"k":"test","mode":"section","en":["Test on a crop",["Open the Test tab to process only a small square. Choose crop size, place the region on the image, and pick models and/or classical scalers to compare. The crop stays marked on the source while results load.","Find best model runs those variants. Comparison includes an Original tile; drag any tile to pan all together, scroll a tile to zoom. Use this model applies the winner and returns to Scale."]],"pl":["Test na wycinku",["Otwórz kartę Test, aby przetworzyć tylko mały kwadrat. Wybierz rozmiar wycinka, ustaw region na obrazie i wskaż modele oraz/lub skalowanie klasyczne do porównania. Wycinek pozostaje zaznaczony na źródle podczas ładowania wyników.","Znajdź najlepszy model uruchamia te warianty. Porównanie zawiera kafelek Oryginał; przeciągnij kafelek, aby przesunąć wszystkie; przewiń, aby powiększyć. Użyj tego modelu stosuje zwycięzcę i wraca do Scale."]]},{"k":"model","mode":"section","en":["Choosing a model",["On the Scale tab choose Neural model or Classical. Photo models (RealESRGAN_x4plus, UltraSharp, ClearReality) add texture. Anime models keep lines clean. The denoise model (realesr-general-wdn-x4v3) helps with noisy or JPEG-damaged files. SPAN models are very fast; HAT is slow but detailed.","Open Model library (header Models link, Method button, or Settings) to rename, describe, hide, download, or add weights by URL, path, or file. Prefer .safetensors; .pth files can run code when loaded, so use only trusted sources. OpenModelDB and Hugging Face have many community models."]],"pl":["Wybór modelu",["Na karcie Scale wybierz Model neuronowy lub Klasyczny. Modele do zdjęć (RealESRGAN_x4plus, UltraSharp, ClearReality) dodają teksturę. Modele anime zachowują czyste linie. Model z odszumianiem (realesr-general-wdn-x4v3) pomaga przy zaszumionych lub uszkodzonych kompresją plikach. Modele SPAN są bardzo szybkie; HAT jest wolny, ale szczegółowy.","Otwórz Bibliotekę modeli (link Modele w nagłówku, przycisk Method lub Ustawienia), aby zmienić nazwę, opis, ukryć, pobrać lub dodać wagi przez URL, ścieżkę albo plik. Wybieraj .safetensors; pliki .pth mogą uruchamiać kod przy wczytaniu, więc używaj tylko zaufanych źródeł. OpenModelDB i Hugging Face mają wiele modeli społeczności."]]},{"k":"params","mode":"parent","en":["Model parameters",["Denoise strength (wdn model) sets how much noise is removed. Open Model library to rename, describe, hide, or add weights."]],"pl":["Parametry modelu",["Siła odszumiania (model wdn) określa, ile szumu usunąć. Otwórz Bibliotekę modeli, aby zmienić nazwę, opis, ukryć lub dodać wagi."]]},{"k":"filters","mode":"section","en":["Filters",["On the Scale tab, filters clean the image before the model sees it (Before) or adjust the result (After). Denoise, JPEG clean and Deblur help soft or compressed sources. After: edge enhance, halo reduce, color/contrast, and film grain. Each filter has its own amount.","Test compare does not run filter variants. Set filters on Scale after you pick a model, then judge the full-image result."]],"pl":["Filtry",["Na karcie Scale filtry czyszczą obraz, zanim zobaczy go model (Przed), lub korygują wynik (Po). Odszumianie, czyszczenie JPEG i odszarzanie pomagają przy miękkich lub skompresowanych źródłach. Po: wzmocnienie krawędzi, redukcja aureoli, kolor/kontrast i ziarno. Każdy filtr ma własną ilość.","Porównanie w Trybie Test nie uruchamia wariantów filtrów. Ustaw filtry na Scale po wyborze modelu i oceń wynik w pełnym rozmiarze."]]},{"k":"output","mode":"section","en":["Output format",["Auto saves PNG and switches to TIFF above 20,000 px. JPEG, EXIF-JPEG (keeps metadata), WebP and JPEG 2000 are smaller but lossy. TIFF supports LZW, Deflate, Zstd, JPEG or none. PSD/PSB save a flattened composite only."]],"pl":["Format wyjściowy",["Auto zapisuje PNG i przełącza na TIFF powyżej 20 000 px. JPEG, EXIF-JPEG (z metadanymi), WebP i JPEG 2000 są mniejsze, ale stratne. TIFF: LZW, Deflate, Zstd, JPEG lub brak. PSD/PSB zapisują tylko spłaszczony obraz."]]},{"k":"advanced","mode":"section","en":["Advanced",["Device picks GPU (CUDA) or CPU. Tile size is how much of the image the model sees at once: lower it if the GPU runs out of memory. Overlap blends neighbouring tiles to hide seams. fp16 halves GPU memory use and speeds up CUDA runs at a tiny cost in precision."]],"pl":["Zaawansowane",["Urządzenie wybiera GPU (CUDA) albo CPU. Rozmiar kafla to fragment obrazu widziany przez model naraz: zmniejsz go, gdy GPU brakuje pamięci. Nakładanie łączy sąsiednie kafle i ukrywa łączenia. fp16 zmniejsza zużycie pamięci GPU o połowę i przyspiesza CUDA kosztem niewielkiej precyzji."]]},{"k":"preflight","mode":"parent","en":["Before you start",["Shows estimated time and file size and checks that RAM, GPU memory and disk space are enough. TIGHT means close to the limit. NOT ENOUGH blocks the run until you change settings; Run anyway overrides the check.","Estimates come from image size, passes, model and device, and can be off by a third either way."]],"pl":["Zanim zaczniesz",["Pokazuje szacowany czas i rozmiar pliku oraz sprawdza, czy wystarczy RAM, pamięci GPU i miejsca na dysku. NA GRANICY oznacza blisko limitu. ZA MAŁO blokuje uruchomienie do zmiany ustawień; Uruchom mimo to pomija kontrolę.","Szacunki wynikają z rozmiaru obrazu, liczby przebiegów, modelu i urządzenia i mogą się mylić o około jedną trzecią."]]},{"k":"run","mode":"self","en":["Run, pause, cancel",["On Scale, press Upscale. On Test, the same button is Find best model and runs the selected compare variants. While a job runs, Pause holds between tiles and keeps progress; Resume continues. Cancel stops the job and discards partial output. Resume interrupted continues a checkpointed job after a restart."]],"pl":["Uruchamianie, pauza, anulowanie",["Na karcie Scale naciśnij Powiększ. Na karcie Test ten sam przycisk to Znajdź najlepszy model i uruchamia wybrane warianty. W trakcie pracy Wstrzymaj zatrzymuje zadanie między kafelkami i zachowuje postęp; Wznów kontynuuje. Anuluj zatrzymuje zadanie i odrzuca częściowy wynik. Wznów przerwane kontynuuje zadanie z punktem kontrolnym po restarcie."]]},{"k":"batch","mode":"self","en":["Batch",["With two or more images a strip appears above the canvas. Click a thumbnail to preview it, ✕ to remove it. Upscale runs the whole queue in order and each thumbnail shows its progress. Download all saves every result."]],"pl":["Partia",["Przy dwóch lub więcej obrazach nad obszarem roboczym pojawia się pasek. Kliknij miniaturę, aby ją podejrzeć, ✕ aby usunąć. Powiększ przetwarza całą kolejkę po kolei, a miniatury pokazują postęp. Pobierz wszystko zapisuje każdy wynik."]]},{"k":"settings","mode":"self","en":["Settings",["Switch between light and dark themes, choose normal, larger or largest text, and pick English or Polish. Choices are remembered on this device. Simple view versus Advanced view is also remembered for the next visit."]],"pl":["Ustawienia",["Przełączaj motyw jasny i ciemny, wybierz normalny, większy lub największy tekst oraz język angielski lub polski. Wybór jest zapamiętywany na tym urządzeniu. Widok prosty albo zaawansowany też jest zapamiętywany przy kolejnej wizycie."]]}];
+  tr(v){const m=v.match(/^(\s*)([\s\S]*?)(\s*)$/),c=m[2];let o=this.DICT[c];if(o===undefined)o=this.DICT_X[c];if(o===undefined){for(const [r,x] of this.PATS.concat(this.PATS_X)){if(r.test(c)){o=c.replace(r,x);break;}}}
+    if(o===undefined&&/Not enough |failed to load/.test(c)){o=c;for(const [a,b] of this.PH)o=o.split(a).join(b);}return o===undefined?v:m[1]+o+m[3];}
+  i18n(){const pl=this.state.lang==='pl',w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT,{acceptNode:n=>n.parentNode&&/^(SCRIPT|STYLE|CODE|TEXTAREA)$/.test(n.parentNode.nodeName)?NodeFilter.FILTER_REJECT:NodeFilter.FILTER_ACCEPT});let n;
+    while((n=w.nextNode())){const v=n.nodeValue;if(n._pl!==undefined&&v===n._pl){if(!pl){n.nodeValue=n._en;n._pl=undefined;}continue;}if(!pl||!v.trim())continue;const o=this.tr(v);if(o!==v){n._en=v;n._pl=o;n.nodeValue=o;}}
+    document.querySelectorAll('input[placeholder]').forEach(e=>{if(e._en===undefined)e._en=e.placeholder;const o=pl?({'/path/to/my_model.pth':'/sciezka/do/modelu.pth','https://… or /path/model.pth':'https://… lub /sciezka/model.pth'})[e._en]:null;e.placeholder=o||e._en;});
+    document.documentElement.lang=pl?'pl':'en';}
+  pathLocale(){const m=location.pathname.match(/^\/([A-Za-z0-9_-]+)(?:\/|$)/);const code=m&&m[1];return(code&&this.LANGS.some(l=>l[0]===code&&l[2]))?code:null;}
+  setLangCookie(code){try{document.cookie='upscale_lang='+encodeURIComponent(code)+';path=/;max-age=31536000;SameSite=Lax';}catch(e){}}
+  loadModelPrefs(){let hidden=[],meta={};try{hidden=JSON.parse(localStorage.getItem('upscale.hiddenModels')||'[]');if(!Array.isArray(hidden))hidden=[];}catch(e){hidden=[];}try{meta=JSON.parse(localStorage.getItem('upscale.modelMeta')||'{}');if(!meta||typeof meta!=='object')meta={};}catch(e){meta={};}return{hiddenModels:hidden,modelMeta:meta};}
+  saveHidden(hidden){try{localStorage.setItem('upscale.hiddenModels',JSON.stringify(hidden||[]));}catch(e){}}
+  saveMeta(meta){try{localStorage.setItem('upscale.modelMeta',JSON.stringify(meta||{}));}catch(e){}}
+  modelLabel(name,fallback){const m=(this.state.modelMeta||{})[name];return(m&&m.label)||fallback||name;}
+  modelDesc(name,fallback){const m=(this.state.modelMeta||{})[name];return(m&&m.description)!=null&&m.description!==''?m.description:(fallback||'');}
+  isHidden(name){return(this.state.hiddenModels||[]).includes(name);}
+  visibleModels(all){return(all||[]).filter(x=>!this.isHidden(x[0]));}
+  initPrefs(){const urlLang=this.pathLocale();const mp=this.loadModelPrefs();try{const p=JSON.parse(localStorage.getItem('upscale.prefs')||'{}');const lang=urlLang||p.lang||'en';const patch={hiddenModels:mp.hiddenModels,modelMeta:mp.modelMeta};if(p.theme||p.fsize||p.lang||urlLang){patch.theme=p.theme||'light';patch.fsize=p.fsize||'normal';patch.lang=lang;}this.setState(patch);if(urlLang){try{localStorage.setItem('upscale.prefs',JSON.stringify({theme:p.theme||'light',fsize:p.fsize||'normal',lang:urlLang}));}catch(e){}this.setLangCookie(urlLang);}}catch(e){this.setState(mp);}
+    this.mo=new MutationObserver(()=>{if(this._raf)return;this._raf=requestAnimationFrame(()=>{this._raf=0;this.i18n();});});this.mo.observe(document.body,{childList:true,subtree:true,characterData:true});}
+  LANGS=[['en','English',1],['pl','Polski',1],['de','Deutsch',0],['fr','Français',0],['es','Español',0],['it','Italiano',0],['pt','Português',0],['nl','Nederlands',0],['cs','Čeština',0],['uk','Українська',0],['tr','Türkçe',0],['ja','日本語',0],['ko','한국어',0],['zh','简体中文',0]];
+  FDEF=[['denoise','Denoise','Before','Removes sensor noise before upscaling so the model does not enlarge it.'],['jpeg','JPEG artifact removal','Before','Smooths blocks and ringing left by JPEG compression before upscaling.'],['deblur','Deblur','Before','Unsharp sharpening for soft or slightly motion-blurred sources before the model.'],['edge','Edge enhance','After','Sharpens outlines after upscaling. Keep it low to avoid halos.'],['halo','Halo reduce','After','Pulls bright/dark ringing toward the neighbourhood so edges look cleaner.'],['color','Color and contrast','After','Mild color and contrast boost after upscaling.'],['grain','Film grain','After','Adds fine grain after upscaling to hide a smooth, plastic look.']];
+  applyHelp(){const s=this.state;if(this._hl){this._hl.style.outline='';this._hl.style.outlineOffset='';this._hl=null;}if(!s.helpOpen){this._li=-1;return;}
+    const h=this.HELP[s.helpIdx],el=document.querySelector('[data-help="'+h.k+'"]');if(!el)return;const tg=h.mode==='self'?el:h.mode==='parent'?el.parentElement:(el.closest('section')||el);
+    tg.style.outline='3px solid var(--color-accent)';tg.style.outlineOffset='4px';this._hl=tg;
+    if(this._li!==s.helpIdx){this._li=s.helpIdx;const r=tg.getBoundingClientRect();window.scrollTo({top:Math.max(0,r.top+window.scrollY-100),behavior:'smooth'});const side=r.left+r.width/2>window.innerWidth*.55?'left':'right';if(side!==s.helpSide)this.setState({helpSide:side});}}
+  setPref(k,v){this.setState({[k]:v},()=>{try{const s=this.state;localStorage.setItem('upscale.prefs',JSON.stringify({theme:s.theme,fsize:s.fsize,lang:s.lang}));}catch(e){}if(k==='lang'){this.setLangCookie(v);const cur=this.pathLocale();if(cur&&cur!==v){const rest=location.pathname.replace(/^\/[^/]+/,'')||'/';location.assign('/'+v+rest+(location.search||'')+(location.hash||''));return;}}this.i18n();});}
+  applyPrefs(){const s=this.state,r=document.documentElement.style,dark={'--color-bg':'#1b1a19','--color-surface':'#262423','--color-text':'#f3f2f2','--color-divider':'color-mix(in srgb, #f3f2f2 40%, transparent)','--color-neutral-100':'#2d2b2b','--color-neutral-200':'#3a3737','--color-neutral-300':'#4c4949','--color-neutral-400':'#605d5d','--color-neutral-500':'#7d7979','--color-neutral-600':'#9b9797','--color-neutral-700':'#bab6b6','--color-neutral-800':'#d7d3d3','--color-neutral-900':'#f8f4f4','--color-accent-100':'#4d170e','--color-accent-200':'#7c1405','--color-accent-700':'#ff9783','--color-accent-800':'#ffc4b8'};
+    const isDark=s.theme==='dark'||(s.theme==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);for(const k in dark){if(isDark)r.setProperty(k,dark[k]);else r.removeProperty(k);}r.setProperty('--fs',({normal:1,larger:1.15,largest:1.3})[s.fsize]);r.colorScheme=isDark?'dark':'light';}
+  componentDidMount(){
+    this.initPrefs();
+    try{this.setState({onnxBanner:sessionStorage.getItem('upscale.onnxBannerDismissed')!=='1'});}catch(e){}
+    if(window.UpscaleBackend&&window.UpscaleBackend.rememberView)window.UpscaleBackend.rememberView('advanced');
+    else{try{localStorage.setItem('upscale.view','advanced');document.cookie='upscale_view=advanced;path=/;max-age=31536000;SameSite=Lax';}catch(e){}}
+    try{const a=JSON.parse(localStorage.getItem('upscale.addedModels')||'[]');if(a.length)this.setState({added:a});}catch(e){}
+    if(window.UpscaleBackend){window.UpscaleBackend.restoreSession(this);window.UpscaleBackend.refreshInterrupted(this);window.UpscaleBackend.hydrateSystem(this);}
+    this._onEsc=(e)=>{
+      if(e.key!=='Escape')return;
+      const st=this.state;
+      if(st.setOpen){this.setState({setOpen:false});return;}
+      if(st.helpOpen){this.setState({helpOpen:false});}
+    };
+    document.addEventListener('keydown',this._onEsc);
+  }
+  curScale(){ const s=this.state; if(s.mode==='dims') return s.w?(+s.dw||s.w)/s.w:1; if(!s.w) return s.mode==='scale'?s.scale:1; return s.mode==='scale'?+s.scale||1:(+s.target||s.w)/Math.max(s.w,s.h); }
+  INPUT_EXT=/\.(png|jpe?g|webp|tiff?|bmp|tga|psd|psb|jp2|j2k|jpf|jpx)$/i;
+  VECTOR_EXT=/\.(svgz?|eps|ai|emf|wmf)$/i;
+  VECTOR_MIME=/^(image\/svg|image\/svg\+xml|application\/postscript|application\/illustrator)/i;
+  SERVER_DECODE_EXT=/\.(tga|psd|psb|jp2|j2k|jpf|jpx)$/i;
+  loadFile=(f)=>{if(f)this.loadFiles([f]);};
+  isVectorFile=(f)=>!!(f&&(this.VECTOR_EXT.test(f.name||'')||this.VECTOR_MIME.test(f.type||'')));
+  isInputFile=(f)=>!!(f&&!this.isVectorFile(f)&&this.INPUT_EXT.test(f.name||''));
+  detectAlpha=(url)=>new Promise(res=>{const im=new Image();im.onload=()=>{try{const max=96,sc=Math.min(1,max/Math.max(im.naturalWidth,im.naturalHeight,1));const w=Math.max(1,Math.round(im.naturalWidth*sc)),h=Math.max(1,Math.round(im.naturalHeight*sc));const cv=document.createElement('canvas');cv.width=w;cv.height=h;const g=cv.getContext('2d',{willReadFrequently:true});g.drawImage(im,0,0,w,h);const d=g.getImageData(0,0,w,h).data;for(let i=3;i<d.length;i+=4){if(d[i]<254){res(true);return;}}}catch(e){}res(false);};im.onerror=()=>res(false);im.src=url;});
+  maybeSuggest=(f)=>{if(!f||this._suggestedOnce||!window.UpscaleBackend||!window.UpscaleBackend.suggest)return;this._suggestedOnce=true;window.UpscaleBackend.suggest(f,true).then(r=>{if(!r)return;this.setState({suggestModel:r.model||null,suggestReason:r.reason||r.message||(r.model?('Suggested: '+r.model):'')});}).catch(()=>{});};
+  addLoadedItem=(f,url,w,h,hasAlpha)=>{const it={id:Math.random().toString(36).slice(2),file:f,url,name:f.name,w,h,st:'queued',pct:0,hasAlpha:!!hasAlpha};this.setState(st=>{const files=[...st.files,it];return st.file?{files}:{files,file:f,url,name:f.name,w,h,dw:w*4,dh:h*4,px:0,py:0,zoom:1,split:50,status:'idle',pct:0,activeId:it.id,hasAlpha:!!hasAlpha};});this.maybeSuggest(f);return it;};
+  loadViaServer=(f)=>{(window.UpscaleBackend&&window.UpscaleBackend.decodePreview?window.UpscaleBackend.decodePreview(f):fetch('/api/decode-preview',{method:'POST',body:(()=>{const fd=new FormData();fd.append('file',f,f.name);return fd;})()}).then(async res=>{if(!res.ok)throw new Error(await res.text());const blob=await res.blob();return{blob,w:+res.headers.get('X-Image-Width')||0,h:+res.headers.get('X-Image-Height')||0,hasAlpha:res.headers.get('X-Has-Alpha')==='1'};})).then(({blob,w,h,hasAlpha})=>{const url=URL.createObjectURL(blob);this.addLoadedItem(f,url,w,h,hasAlpha);}).catch(e=>alert('Could not open '+f.name+': '+(e.message||e)));};
+  loadOneFile=(f)=>{if(this.SERVER_DECODE_EXT.test(f.name||'')){this.loadViaServer(f);return;}const url=URL.createObjectURL(f),im=new Image();im.onload=()=>{const it=this.addLoadedItem(f,url,im.naturalWidth,im.naturalHeight,false);this.detectAlpha(url).then(hasAlpha=>{if(!hasAlpha)return;this.setState(st=>({files:st.files.map(x=>x.id===it.id?{...x,hasAlpha:true}:x),hasAlpha:st.activeId===it.id?true:st.hasAlpha}));});};im.onerror=()=>{URL.revokeObjectURL(url);this.loadViaServer(f);};im.src=url;};
+  loadFiles=(list)=>{if(this.state.status==='running'||this.state.status==='done'){alert(this.state.status==='running'?'Stop or wait for the current upscale before adding images.':'Clear the results first (Clear), then add new images.');return;}const raw=[...list];const vectors=raw.filter(f=>this.isVectorFile(f));const files=raw.filter(f=>this.isInputFile(f));if(vectors.length&&!files.length){alert('Vector images (SVG, EPS, AI, …) are not supported. Export or rasterize to PNG, TIFF, or another bitmap format first.');return;}if(!files.length){alert('No supported images. Use PNG, JPG, WebP, TIFF, BMP, TGA, PSD, PSB or JPEG 2000.');return;}if(vectors.length)alert('Skipped vector file'+(vectors.length>1?'s':'')+': '+vectors.map(f=>f.name).join(', ')+'. Only raster bitmaps are supported.');files.forEach(f=>this.loadOneFile(f));};
+  kFor(it){const s=this.state;if(!it||!it.w)return 1;return s.mode==='scale'?(+s.scale||1):s.mode==='dims'?(+s.dw||it.w)/it.w:(+s.target||it.w)/Math.max(it.w,it.h);}
+  runBatch(){ if(window.UpscaleBackend) window.UpscaleBackend.runBatch(this); }
+  pickItem=(ref)=>{const it=(this.state.files||[]).find(x=>x.id===(ref&&ref.id))||ref;if(!it)return;const jobId=it.jobId||null;const done=it.st==='done'&&!!(it.displayUrl||it.resultUrl||jobId);const resultUrl=done?(it.resultUrl||(jobId?('/api/jobs/'+jobId+'/result'):null)):null;const displayUrl=done?(it.displayUrl||it.urlAfter||(jobId?('/api/jobs/'+jobId+'/display'):null)||resultUrl):null;this._jobId=jobId;this.setState({file:it.file,url:it.url,name:it.name,w:it.w,h:it.h,activeId:it.id,hasAlpha:!!it.hasAlpha,dw:Math.round(it.w*this.curScale()),dh:Math.round(it.h*this.curScale()),resultUrl,displayUrl,urlAfter:displayUrl,jobId,status:done?'done':'idle',pct:done?100:(it.pct||0)});};
+  removeItem=(ref)=>this.setState(st=>{const id=ref&&ref.id;const files=st.files.filter(x=>x.id!==id);if(st.activeId!==id)return{files};const n=files[0];if(!n){this._jobId=null;return{files,file:null,url:null,w:0,h:0,activeId:null,status:'idle',pct:0,cmp:[],resultUrl:null,displayUrl:null,urlAfter:null,jobId:null,hasAlpha:false};}const jobId=n.jobId||null;const done=n.st==='done'&&!!(n.displayUrl||n.resultUrl||jobId);const resultUrl=done?(n.resultUrl||(jobId?('/api/jobs/'+jobId+'/result'):null)):null;const displayUrl=done?(n.displayUrl||n.urlAfter||(jobId?('/api/jobs/'+jobId+'/display'):null)||resultUrl):null;this._jobId=jobId;return{files,file:n.file,url:n.url,name:n.name,w:n.w,h:n.h,activeId:n.id,hasAlpha:!!n.hasAlpha,resultUrl,displayUrl,urlAfter:displayUrl,jobId,status:done?'done':'idle',pct:done?100:0};});
+  run=(force)=>{ const s=this.state; if(s.file&&s.status!=='running'&&force!==true&&this._worst==='fail'){this.setState({blocked:true});return;} if(s.files.length>1&&s.status!=='running'){this.runBatch();return;} if(!s.file||s.status==='running') return; if(window.UpscaleBackend) window.UpscaleBackend.runJob(this,{force:!!force}); };
+  componentWillUnmount(){ clearInterval(this.timer); if(this._onEsc)document.removeEventListener('keydown',this._onEsc); }
+  fmtDims(w,h){ return w?w.toLocaleString('en')+'×'+h.toLocaleString('en'):'—'; }
+  outDims(s){ const k=this.curScale(),[w,h]=this.eff(); return w?Math.round(w*k).toLocaleString('en')+'×'+Math.round(h*k).toLocaleString('en'):'—'; }
+  setCrop=(e)=>{const s=this.state,g=this._g;if(!g||!s.w)return;if(s.status==='running'||s.status==='done'||(s.cmp&&s.cmp.length)||s.displayUrl||s.resultUrl||s.urlAfter){this.dragging=false;return;}const r=this.stageRef.current.getBoundingClientRect();const hx=g.ew/2/s.w,hy=g.eh/2/s.h;const z=s.zoom,ux=g.sw/2+(e.clientX-r.left-g.sw/2-s.px)/z,uy=g.sh/2+(e.clientY-r.top-g.sh/2-s.py)/z;const fx=(ux-g.ox)/(s.w*g.sc),fy=(uy-g.oy)/(s.h*g.sc);this.setState({cx:Math.max(hx,Math.min(1-hx,fx)),cy:Math.max(hy,Math.min(1-hy,fy))});};
+  setSplitFrom=(e)=>{ const r=this.stageRef.current.getBoundingClientRect(); this.setState({split:Math.max(0,Math.min(100,(e.clientX-r.left)/r.width*100))}); };
+  renderVals(){
+    const s=this.state, set=(o)=>()=>this.setState(o), k=this.curScale(), P=this.passesFor(k);
+    const ALL=this.MODELS.concat(s.added), VIS=this.visibleModels(ALL), m=ALL.find(x=>x[0]===s.model)||VIS[0]||ALL[0], custom=s.model==='__custom';
+    const modelChoices=(()=>{const list=VIS.slice();if(s.model&&!list.some(x=>x[0]===s.model)){const cur=ALL.find(x=>x[0]===s.model);if(cur)list.unshift(cur);}return list;})();
+    const [ew,eh]=this.eff(), ow=s.w?Math.round(ew*k):0, oh=s.w?Math.round(eh*k):0, mpx=ow*oh/1e6;
+    const big=Math.max(ow,oh)>20000, F=s.fmt==='auto'?(big?'tiff':'png'):s.fmt, fmt=({jpeg:'JPEG',jpeg_exif:'EXIF-JPEG',webp:'WebP',jp2:'JPEG 2000',psd:'PSD',psb:'PSB',tiff:'TIFF',bmp:'BMP',tga:'TGA',png:'PNG'})[F]||F.toUpperCase(), ext=({jpeg:'jpg',jpeg_exif:'jpg',tiff:'tif',jp2:'jp2'})[F]||F;
+    const act=(on)=>on?'background:var(--color-text);color:var(--color-bg)':'';
+    const pref=(arr,key)=>arr.map(([v,l])=>({label:l,style:act(s[key]===v),pick:()=>this.setPref(key,v)}));
+    const seg=(arr,key)=>arr.map(([v,l])=>({label:l,style:act(s[key]===v),pick:set({[key]:v})}));
+    const apiSys=window.__UPSCALE_SYS__||{}, SYS={
+      gpu:apiSys.gpu_name||(apiSys.device==='cpu'?'CPU':(apiSys.device||'Detecting…')),
+      vramFree:(apiSys.vram_free_mb!=null?apiSys.vram_free_mb*1e6:(apiSys.vram_total_mb!=null?apiSys.vram_total_mb*1e6:8e9)),
+      vramTotal:(apiSys.vram_total_mb!=null?apiSys.vram_total_mb*1e6:null),
+      ram:(apiSys.ram_available_mb!=null?apiSys.ram_available_mb*1e6:(apiSys.ram_total_mb!=null?apiSys.ram_total_mb*1e6:16e9)),
+      disk:(apiSys.disk_free_mb!=null?apiSys.disk_free_mb*1e6:100e9)
+    };
+    const cpuOnly=s.device==='cpu'||(!apiSys.cuda_available&&s.device==='auto'), hf=s.half&&!cpuOnly, bppx=hf?7000:14000;
+    const tl=s.tile==='auto'?(apiSys.auto_tile||(cpuOnly?256:Math.max(128,Math.min(Math.floor(Math.sqrt(SYS.vramFree*.7/bppx)/64)*64,hf?768:512)))):+s.tile;
+    const jb=.08+(s.q-40)/60*.45, bpp=F==='png'?1.5:F==='tiff'?({lzw:1.9,deflate:1.6,zstd:1.4,jpeg:.4,none:3})[s.tiff]||1.9:F==='bmp'?3:F==='tga'?3.2:(F==='jpeg'||F==='jpeg_exif'||F==='jp2')?jb:(F==='psd'||F==='psb')?3:jb*.7;
+    const fileB=ow*oh*bpp, fb=n=>n>=1e9?(n/1e9).toFixed(1)+' GB':n>=1e6?Math.round(n/1e6)+' MB':Math.round(n/1e3)+' KB';
+    const isAdded=s.added.some(x=>x[0]===s.model), wMB=({'HAT-Real_GAN_sharper':160,'RealESRGAN_x4plus_anime_6B':18,'4x-spanx4-ch48':9,'realesr-general-x4v3':5,'realesr-general-wdn-x4v3':5,'realesr-animevideov3':2})[s.model]||(isAdded?100:67);
+    const mf=({'HAT-Real_GAN_sharper':3,'RealESRGAN_x4plus_anime_6B':.5,'4x-spanx4-ch48':.15,'realesr-general-x4v3':.3,'realesr-general-wdn-x4v3':.3,'realesr-animevideov3':.3})[s.model]||1;
+    const mstatNow=this.mstat(s.model), mErr=mstatNow==='err'?(this.ERR[s.model]||'hash or file error'):null, down=!custom&&!(m[3]==='file')&&(mstatNow==='dl');
+    let work=0;for(let i=0;i<P;i++)work+=ew*eh/1e6*Math.pow(this.base(),2*i);
+    const ovf=Math.pow(tl/Math.max(1,tl-s.overlap),2), rate=(cpuOnly?.04:.8)*(hf?1.7:1)/mf;
+    const filtFactor=1+(s.filt.denoise.on?0.05*s.filt.denoise.v/100:0)+(s.filt.jpeg.on?0.08*s.filt.jpeg.v/100:0)+(s.filt.deblur&&s.filt.deblur.on?0.06*s.filt.deblur.v/100:0)+(s.filt.edge.on?0.03*s.filt.edge.v/100:0)+(s.filt.grain.on?0.02*s.filt.grain.v/100:0)+(s.filt.color&&s.filt.color.on?0.02*s.filt.color.v/100:0)+(s.filt.halo&&s.filt.halo.on?0.04*s.filt.halo.v/100:0);
+    const loadOver=(cpuOnly?8:4)*(wMB>80?1.5:1), dlOver=down?Math.max(5,wMB/10):0;
+    const secsLocal=P?work*ovf/rate*filtFactor+loadOver+dlOver:2+mpx/50;
+    const secs=(s.apiEtaLow!=null&&s.apiEtaHigh!=null)?(s.apiEtaLow+s.apiEtaHigh)/2:secsLocal;
+    const ft=x=>x<60?Math.max(1,Math.round(x))+' s':x<3600?Math.round(x/60)+' min':Math.floor(x/3600)+' h '+Math.round(x%3600/60)+' min';
+    const etaCal=!!s.apiEtaCalibrated;
+    const eta=(s.apiEtaLow!=null&&s.apiEtaHigh!=null)?('~'+ft(s.apiEtaLow)+'–'+ft(s.apiEtaHigh)+(etaCal?' · learned':'')):'~'+ft(secs);
+    if(s.w&&window.UpscaleBackend&&window.UpscaleBackend.maybeEstimate){
+      const filt={pre_denoise:s.filt.denoise.on?s.filt.denoise.v/100:0,jpeg_clean:s.filt.jpeg.on?s.filt.jpeg.v/100:0,deblur:(s.filt.deblur&&s.filt.deblur.on)?s.filt.deblur.v/100:0,edge:s.filt.edge.on?s.filt.edge.v/100:0,grain:s.filt.grain.on?s.filt.grain.v/100:0,color_contrast:(s.filt.color&&s.filt.color.on)?s.filt.color.v/100:0,halo_reduce:(s.filt.halo&&s.filt.halo.on)?s.filt.halo.v/100:0,seamless:!!s.seamless};
+      const estBody={src_w:ew||s.w,src_h:eh||s.h,scale:k||1,model:custom?(s.custom||s.model):s.model,device:s.device||'auto',half:!!s.half,tile:s.tile==='auto'?null:+s.tile,filters:filt,model_ready:!down};
+      if(s.method==='classical'&&s.algorithm)estBody.algorithm=s.algorithm;
+      window.UpscaleBackend.maybeEstimate(this,estBody);
+    }
+    const batch=s.files.length>1;
+    const helpOpenMissing=s.helpOpen&&typeof document!=='undefined'&&!document.querySelector('[data-help="'+this.HELP[s.helpIdx].k+'"]');
+    const items=s.files.map(it=>{const kk=this.kFor(it),ew2=s.test?Math.min(s.cropSize,it.w):it.w,eh2=s.test?Math.min(s.cropSize,it.h):it.h,o1=Math.round(ew2*kk),o2=Math.round(eh2*kk),P2=this.passesFor(kk);let w2=0;for(let i=0;i<P2;i++)w2+=ew2*eh2/1e6*Math.pow(this.base(),2*i);return{name:it.name,o1,o2,fb:o1*o2*bpp,sec:P2?w2*ovf/rate+3:2+o1*o2/5e7};});
+    const tSecs=items.reduce((a,x)=>a+x.sec,0), tFile=items.reduce((a,x)=>a+x.fb,0), maxPx=Math.max(1,...items.map(x=>x.o1*x.o2)), TS=batch?tSecs:secs, TF=batch?tFile:fileB;
+    const mk=(label,n,h)=>{const st=n>h?'fail':n>h*.7?'warn':'ok';return{label,need:fb(n),have:' of '+fb(h)+' free',st,status:st==='ok'?'OK':st==='warn'?'TIGHT':'NOT ENOUGH',cls:st==='ok'?'tag tag-outline':st==='warn'?'tag tag-neutral':'tag tag-accent'};};
+    const gpuNeed=tl*tl*bppx+wMB*1.5e6;
+    let gpuRow=cpuOnly?null:mk('GPU memory · tile '+tl,gpuNeed,SYS.vramFree);
+    const fitHint=apiSys.vram_fit;
+    if(gpuRow&&fitHint==='spill'){gpuRow={...gpuRow,st:'fail',status:'NOT ENOUGH',cls:'tag tag-accent'};}
+    else if(gpuRow&&fitHint==='tight'&&gpuRow.st==='ok'){gpuRow={...gpuRow,st:'warn',status:'TIGHT',cls:'tag tag-neutral'};}
+    const rows=[mk('Memory (RAM)',(batch?maxPx:ow*oh)*19*1.25+1.5e9,SYS.ram),gpuRow,mk('Disk space',TF*1.2+(down?wMB*1e6:0),SYS.disk),mErr?{label:'Model weights',need:'Failed to load: '+mErr,have:'',st:'fail',status:'FAILED',cls:'tag tag-accent'}:{label:'Model weights',need:down?'Download '+wMB+' MB on first run':'On disk',have:'',st:'ok',status:down?'DOWNLOAD':'READY',cls:down?'tag tag-neutral':'tag tag-outline'}].filter(Boolean);
+    const failed=rows.filter(r=>r.st==='fail').map(r=>r.label.split(' ·')[0]);
+    this._worst=failed.length?'fail':(rows.some(r=>r.st==='warn')?'warn':'ok');
+    const tips=(failed.some(x=>x.startsWith('Memory'))?'Lower the scale or output size, or test a crop. ':'')+(failed.some(x=>x.startsWith('GPU'))?'Pick a smaller tile, turn on fp16, or use Classical method. ':'')+(failed.some(x=>x.startsWith('Disk'))?'Free disk space or choose JPEG or WebP. ':'');
+    const failedRes=failed.filter(x=>x!=='Model weights'), blockedMsg=(mErr?'Model failed to load ('+mErr+'). Pick another model or re-download it. ':'')+(failedRes.length?'Not enough '+failedRes.join(', ').toLowerCase()+'. '+tips:'');
+    let warn='';
+    if(k<1&&s.w) warn='Scale below 1× is a downscale. Lanczos only, no model.';
+    else if(fitHint==='spill'&&!cpuOnly) warn='Model + tile likely exceed free VRAM. Smaller tile, fp16, CPU, or Classical method.';
+    else if(fitHint==='tight'&&!cpuOnly) warn='VRAM is tight for this model and tile. Prefer smaller tile or fp16.';
+    else if(mpx>400) warn='Very large output ('+Math.round(mpx)+' MP). Needs lots of RAM; TIFF output with LZW recommended.';
+    else if(s.onnxHint) warn=s.onnxHint;
+    const cliBuilt='upscale upscale '+(s.files.length>1?'INPUT OUTPUT':(s.name||'input.png')+' output.'+ext)+(s.mode==='scale'?' --scale '+(+s.scale||1):(s.mode==='dims'?' --scale '+k:' --target-size '+(+s.target||0)))+' --model '+(custom?(s.custom||'<path>'):s.model)+(s.tile!=='auto'?' --tile '+s.tile:'')+(s.overlap!==32?' --overlap '+s.overlap:'')+(s.device!=='auto'?' --device '+s.device:'')+(s.half?' --half':'')+(F==='tiff'&&s.tiff!=='lzw'?' --tiff-compression '+s.tiff:'')+((F==='jpeg'||F==='jpeg_exif'||F==='webp'||F==='jp2')&&s.q!==90?' --quality '+s.q:'')+(s.model==='realesr-general-wdn-x4v3'&&s.denoise!==0.5?' --denoise '+s.denoise:'')+Object.entries(s.filt).filter(([k,x])=>x.on).map(([k,x])=>' --'+({denoise:'pre-denoise',jpeg:'jpeg-clean',deblur:'deblur',edge:'edge',grain:'grain',color:'color-contrast',halo:'halo-reduce'})[k]+' '+x.v/100).join('')+(s.test?' --crop '+Math.round(s.cx*s.w-ew/2)+','+Math.round(s.cy*s.h-eh/2)+','+ew+','+eh:'')+(s.seamless?' --seamless':'')+(s.fast?' --fast':'');
+    const cli=s.cliHint||cliBuilt;
+    const rc=this.stageRef.current&&this.stageRef.current.getBoundingClientRect(), sw=rc?rc.width:800, sh=rc?rc.height:500;
+    const sc=s.w?Math.min(sw/s.w,sh/s.h):1, ox=(sw-s.w*sc)/2, oy=(sh-s.h*sc)/2;
+    this._g={sw,sh,sc,ox,oy,ew,eh};
+    const running=s.status==='running', done=s.status==='done';
+    const hasCmp=!!(s.cmp&&s.cmp.length), hasResult=!!(s.displayUrl||s.resultUrl||s.urlAfter);
+    const cropLocked=running||done||hasCmp||hasResult;
+    const cssUrl=(u)=>{if(!u)return'none';const s=String(u).replace(/\\/g,'\\\\').replace(/"/g,'\\"');return 'url("'+s+'")';};
+    const afterRaw=(done&&(s.displayUrl||s.urlAfter||s.resultUrl))?(s.displayUrl||s.urlAfter||s.resultUrl):s.url;
+    // Bust CSS/browser cache when switching batch items that share path shapes.
+    const afterSrc=afterRaw&&s.jobId&&String(afterRaw).indexOf('/api/jobs/')===0?(afterRaw+(afterRaw.indexOf('?')>=0?'&':'?')+'i='+encodeURIComponent(s.jobId)):afterRaw;
+    const z=s.zoom;
+    // Test-crop result is a standalone crop image — pan/zoom both layers with the
+    // same center/contain + transform so before/after stay in sync.
+    const cropDone=!!(s.test&&done&&s.w&&(s.displayUrl||s.resultUrl||s.urlAfter));
+    const beforeSrc=cropDone?(s.cropBeforeUrl||s.url):s.url;
+    const hasAlpha=!!s.hasAlpha;
+    // Checkerboard lives on the stage (.alpha-checker). Image layers use a
+    // normal background so PNG alpha composites over it — do not stuff
+    // position/size into background-image (invalid CSS → image invisible).
+    const imgBase='width:100%;height:100%;background:'+cssUrl(beforeSrc)+' center/contain no-repeat;user-select:none;pointer-events:none;';
+    const imgAfter='width:100%;height:100%;background:'+cssUrl(afterSrc)+' center/contain no-repeat;user-select:none;pointer-events:none;';
+    return {
+      deviceLabel:s.deviceLabel||(s.device==='cpu'?'CPU':s.device==='cuda'?'CUDA':'Auto device'), modelLabel:this.MODELS.length+" models", attn:ALL.some(x=>this.mstat(x[0])!=='ok')||!!s.onnxHint, attnLabel:s.onnxHint?'ONNX models':(ALL.filter(x=>this.mstat(x[0])!=='ok').length+' need attention'),
+      modelNote:custom?'':({err:'This model failed verification: '+(this.ERR[s.model]||'hash or file error')+'. Choose another model or re-download it.',dl:'Not downloaded yet. It downloads (about '+(({'HAT-Real_GAN_sharper':160,'4x-spanx4-ch48':9,'4xNomosUni_span_multijpg':9})[s.model]||67)+' MB) when you start, so the first run takes longer.'})[this.mstat(s.model)]||'',
+      noteBtn:s.fixing?'Downloading…':this.mstat(s.model)==='err'?'Re-download':'Download now',
+      fixModel:()=>{if(running){alert('Stop the current upscale to change settings.');return;}if(s.fixing)return;const n=s.model;this.setState({fixing:n});(window.UpscaleBackend?window.UpscaleBackend.downloadModel(n):Promise.resolve()).then(()=>{delete this.ERR[n];this.setState({fixing:null});}).catch(e=>{this.ERR[n]=String(e.message||e);this.setState({fixing:null});});},
+      chipNote:ALL.some(x=>this.mstat(x[0])!=='ok')?'↓ = not downloaded yet. ✕ = failed verification (re-download). Status is on-disk, not “loaded in GPU”.':'',
+      goSimple:(e)=>{if(window.UpscaleBackend){window.UpscaleBackend.stashSession(this,'simple');window.UpscaleBackend.rememberView('simple');}else{try{localStorage.setItem('upscale.view','simple');document.cookie='upscale_view=simple;path=/;max-age=31536000;SameSite=Lax';}catch(err){}}},
+      isScale:s.mode==='scale', isDims:s.mode==='dims', segDims:act(s.mode==='dims'), setModeDims:set({mode:'dims'}), dw:s.dw, dh:s.dh,
+      onDw:e=>{const v=+e.target.value;this.setState({dw:e.target.value,dh:s.w?Math.round(v*s.h/s.w):0});}, onDh:e=>{const v=+e.target.value;this.setState({dh:e.target.value,dw:s.h?Math.round(v*s.w/s.h):0});},
+      dpis:seg([[72,'72'],[150,'150'],[300,'300'],[600,'600']],'dpi'), printSize:s.w?(ow/s.dpi*2.54).toFixed(1)+' × '+(oh/s.dpi*2.54).toFixed(1)+' cm  ·  '+(ow/s.dpi).toFixed(1)+' × '+(oh/s.dpi).toFixed(1)+' in':'—', isTarget:s.mode==='target',
+      segScale:act(s.mode==='scale'), segTarget:act(s.mode==='target'), setModeScale:set({mode:'scale'}), setModeTarget:set({mode:'target'}),
+      scalePresets:[2,4,8,15,30].map(v=>({label:v+'×',style:'min-width:0;padding-inline:8px;'+(+s.scale===v?'background:var(--color-text);color:var(--color-bg)':''),pick:set({scale:v})})),
+      scale:s.scale, target:s.target, onScale:e=>this.setState({scale:e.target.value}), onTarget:e=>this.setState({target:e.target.value}),
+      isScaleTab:!s.test, isTestTab:!!s.test, tabScale:act(!s.test), tabTest:act(!!s.test),
+      setTabScale:()=>{if(running){alert('Stop the current upscale to change settings.');return;}this.setState({test:false,tool:'select'});},
+      setTabTest:()=>{if(running){alert('Stop the current upscale to change settings.');return;}this.setState({test:true,tool:'select',status:'idle',displayUrl:null,resultUrl:null,urlAfter:null});},
+      methodModes:[['neural','Neural model'],['classical','Classical']].map(([v,l])=>({label:l,style:act(s.method===v),pick:()=>{if(running){alert('Stop the current upscale to change settings.');return;}this.setState({method:v});}})),
+      isClassical:s.method==='classical', isNeural:s.method!=='classical', isVectorize:s.method==='classical'&&s.algorithm==='vectorize_scale', isVecVtracer:s.method==='classical'&&s.algorithm==='vectorize_scale'&&(s.vecEngine||'vtracer')!=='autotrace',
+      algorithms:this.algoList(), algorithmOptions:this.algoSelectOptions(), algorithm:s.algorithm, onAlgorithm:e=>{if(running){alert('Stop the current upscale to change settings.');return;}const v=e.target.value; if(!v)return; this.setState({algorithm:v});},
+      algoDesc:(()=>{const a=this.algoList().find(x=>x.name===s.algorithm); return (a&&a.description)||this.ALGO_DESC[s.algorithm]||'';})(),
+      vecEngines:[['vtracer','VTracer'],['autotrace','AutoTrace']].map(([v,l])=>({label:l,style:act((s.vecEngine||'vtracer')===v),pick:()=>{if(running){alert('Stop the current upscale to change settings.');return;}this.setState({vecEngine:v});}})),
+      vecModes:[['spline','Smooth'],['polygon','Polygon']].map(([v,l])=>({label:l,style:act(s.vecMode===v),pick:()=>{if(running){alert('Stop the current upscale to change settings.');return;}this.setState({vecMode:v});}})),
+      vecColors:s.vecColors, onVecColors:e=>{if(running){alert('Stop the current upscale to change settings.');return;}this.setState({vecColors:+e.target.value});},
+      vecSpeckle:s.vecSpeckle, onVecSpeckle:e=>{if(running){alert('Stop the current upscale to change settings.');return;}this.setState({vecSpeckle:+e.target.value});},
+      vecCorners:s.vecCorners, onVecCorners:e=>{if(running){alert('Stop the current upscale to change settings.');return;}this.setState({vecCorners:+e.target.value});},
+      vecTrace:s.vecTrace, onVecTrace:e=>{if(running){alert('Stop the current upscale to change settings.');return;}this.setState({vecTrace:+e.target.value});},
+      models:modelChoices.map(x=>({name:x[0],label:this.modelLabel(x[0],x[0])+(this.mstat(x[0])==='err'?' · failed verification':this.mstat(x[0])==='dl'?' · not downloaded':'')})), model:s.model, onModel:e=>{if(running){alert('Stop the current upscale to change settings.');return;}this.setState({model:e.target.value});},
+      isCustom:false, customPath:s.custom, onCustom:e=>{},
+      modelDesc:this.modelDesc(s.model,m[1]), modelKind:m[2]||'Model',
+      modelState:m[3]?(m[3]==='url'?'Not downloaded':'On disk'):this.mstat(s.model)==='ok'?'On disk':this.mstat(s.model)==='err'?'Failed verification':'Not downloaded',
+      showModelsNav:true,
+      adv:s.adv, advMark:s.adv?'−':'+', toggleAdv:()=>{if(running){alert('Stop the current upscale to change settings.');return;}this.setState({adv:!s.adv});},
+      devices:[['auto','Auto'],['cuda','CUDA'],['cpu','CPU']].map(([v,l])=>({label:l,style:act(s.device===v),pick:()=>{if(running){alert('Stop the current upscale to change settings.');return;}this.setState({device:v});}})),
+      tiles:['auto',128,256,512,768,1024,1280,1536,2048], tile:s.tile, onTile:e=>{if(running){alert('Stop the current upscale to change settings.');return;}this.setState({tile:e.target.value});},
+      overlap:s.overlap, onOverlap:e=>{if(running){alert('Stop the current upscale to change settings.');return;}this.setState({overlap:+e.target.value});}, half:s.half, onHalf:e=>{if(running){alert('Stop the current upscale to change settings.');return;}this.setState({half:e.target.checked});},
+      tiffs:[['lzw','LZW'],['deflate','Deflate'],['zstd','Zstd'],['jpeg','JPEG'],['none','None']].map(([v,l])=>({label:l,style:act(s.tiff===v),pick:()=>{if(running){alert('Stop the current upscale to change settings.');return;}this.setState({tiff:v});}})),
+      canvasTitle:s.file?s.name.toUpperCase()+(s.test?' · TEST CROP':''):'SOURCE', hasFile:!!s.file, noFile:!s.file, canAddImages:!!s.file&&!running&&!done,
+      fileRef:this.fileRef, stageRef:this.stageRef, pickFile:()=>{if(running||done){alert(running?'Stop or wait for the current upscale before adding images.':'Clear the results first (Clear), then add new images.');return;}if(this.fileRef.current)this.fileRef.current.click();},
+      onFile:e=>{this.loadFiles(e.target.files);e.target.value='';},
+      clearFile:()=>{clearInterval(this.timer);this._jobId=null;this._batchJobIds=null;try{if(this._jobEs){this._jobEs.close();this._jobEs=null;}}catch(e){}if(window.UpscaleBackend&&window.UpscaleBackend.clearWorkspace)window.UpscaleBackend.clearWorkspace(this);this.setState({file:null,url:null,name:'',w:0,h:0,files:[],activeId:null,status:'idle',pct:0,stage:'',cmp:[],resultUrl:null,displayUrl:null,urlAfter:null,jobId:null,hasAlpha:false,paused:false,film:[]});},
+      stageClass:hasAlpha?'alpha-checker':'', stageBgStyle:hasAlpha?'':'background:var(--color-neutral-200);', showAlphaTag:hasAlpha&&!!s.file,
+      onDragOver:e=>{e.preventDefault();if(!s.drag)this.setState({drag:true});}, onDragLeave:()=>this.setState({drag:false}),
+      onDrop:e=>{e.preventDefault();this.setState({drag:false});this.loadFiles(e.dataTransfer.files);},
+      dropStyle:'flex:1;min-height:420px;margin:24px;border:2px dashed '+(s.drag?'var(--color-accent)':'var(--color-text)')+';background:'+(s.drag?'var(--color-accent-100)':'transparent')+';display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:20px;padding:40px;cursor:pointer',
+      imgUrl:s.url||"data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==", isDone:done, pct:s.pct, stage:s.paused?'Paused · '+s.stage:s.stage,
+      afterStyle:imgAfter+'transform:translate('+s.px+'px,'+s.py+'px) scale('+z+');image-rendering:auto',
+      beforeStyle:imgBase+'transform:translate('+s.px+'px,'+s.py+'px) scale('+z+');image-rendering:pixelated',
+      beforeClip:'position:absolute;inset:0;overflow:hidden;clip-path:inset(0 '+(100-s.split)+'% 0 0)',
+      handleStyle:'position:absolute;top:0;bottom:0;width:2px;background:var(--color-accent);left:'+s.split+'%',
+      cmpDown:e=>{if(cropLocked&&s.test&&s.tool!=='pan'&&e.button!==1){if(done){e.currentTarget.setPointerCapture(e.pointerId);this.dragging=true;this.setSplitFrom(e);}return;}if(s.tool==='pan'||e.button===1||(e.shiftKey&&!cropLocked)){e.currentTarget.setPointerCapture(e.pointerId);this.dragging='pan';this.last=[e.clientX,e.clientY];return;}if(s.test&&!cropLocked){e.currentTarget.setPointerCapture(e.pointerId);this.dragging='crop';this.setCrop(e);return;}if(!done)return;e.currentTarget.setPointerCapture(e.pointerId);this.dragging=true;this.setSplitFrom(e);},
+      cmpMove:e=>{if(this.dragging==='pan'){const dx=e.clientX-this.last[0],dy=e.clientY-this.last[1];this.last=[e.clientX,e.clientY];this.setState(st=>({px:st.px+dx,py:st.py+dy}));}else if(this.dragging==='crop'){if(!cropLocked)this.setCrop(e);}else if(this.dragging)this.setSplitFrom(e);}, cmpUp:()=>{this.dragging=false;},
+      stageCursor:s.tool==='pan'?'grab':s.test&&!cropLocked?'crosshair':done?'ew-resize':'default', showCrop:!!(s.test&&s.w&&!cropDone), cropStyle:'position:absolute;pointer-events:none;border:2px solid var(--color-accent);box-shadow:0 0 0 9999px rgba(32,30,29,.45);left:'+(sw/2+(ox+(s.cx*s.w-ew/2)*sc-sw/2)*z+s.px)+'px;top:'+(sh/2+(oy+(s.cy*s.h-eh/2)*sc-sh/2)*z+s.py)+'px;width:'+ew*sc*z+'px;height:'+eh*sc*z+'px',
+      testOn:s.test, showCmp:!!(s.test&&s.cmp&&s.cmp.length&&s.w), closeCmp:()=>this.setState({cmp:[],status:'idle',pct:0,stage:''}),
+      presetChips:(s.apiPresets&&s.apiPresets.options||[]).slice(0,6).map(p=>{const id=p.id||p.label;return{label:p.label||id,style:'',pick:()=>{if(window.UpscaleBackend&&window.UpscaleBackend.applyPreset){window.UpscaleBackend.applyPreset(id).then(frag=>{if(!frag)return;const settings=frag.settings||frag;const patch={};if(settings.scale!=null){patch.mode='scale';patch.scale=settings.scale;}if(settings.target_size!=null){patch.mode='target';patch.target=settings.target_size;}if(settings.format)patch.fmt=settings.format;if(settings.device)patch.device=settings.device;if(settings.half!=null)patch.half=!!settings.half;if(settings.model)patch.model=settings.model;this.setState(patch);}).catch(e=>alert(String(e.message||e)));}}};}),
+      suggestLine:s.suggestReason||'', suggestModel:s.suggestModel||'', useSuggestion:()=>{if(s.suggestModel)this.setState({model:s.suggestModel,method:'neural'});},
+      showOnnxBanner:!!(s.onnxBanner&&s.onnxHint), onnxBannerText:s.onnxHint||'ONNX runtime needs model weights.', dismissOnnxBanner:()=>{try{sessionStorage.setItem('upscale.onnxBannerDismissed','1');}catch(e){}this.setState({onnxBanner:false});}, openFirstRunHelp:()=>{const i=this.HELP.findIndex(h=>h.k==='first_run'||h.k==='canvas');this.setState({helpOpen:true,helpIdx:i>=0?i:0});},
+      cmpIncludeFilters:!!s.cmpIncludeFilters, onCmpIncludeFilters:e=>this.setState({cmpIncludeFilters:!!e.target.checked}),
+      benchMsg:s.benchMsg||'', runBenchmark:async()=>{if(!window.UpscaleBackend||!window.UpscaleBackend.runBenchmark){this.setState({benchMsg:'Benchmark API unavailable'});return;}this.setState({benchMsg:'Running benchmark…'});try{const out=await window.UpscaleBackend.runBenchmark(this);this.setState({benchMsg:out&&out.mps!=null?('~'+Number(out.mps).toFixed(2)+' MP/s'):(out&&out.message)||'Benchmark saved'});if(window.UpscaleBackend.invalidateEstimate)window.UpscaleBackend.invalidateEstimate(this);if(window.UpscaleBackend.maybeEstimate&&s.w)window.UpscaleBackend.maybeEstimate(this,{src_w:s.w,src_h:s.h,scale:this.curScale(),model:s.model,device:s.device,tile:s.tile,half:s.half});}catch(e){this.setState({benchMsg:String(e.message||e)});}},
+      exportSettings:()=>{if(window.UpscaleBackend&&window.UpscaleBackend.exportSettings)window.UpscaleBackend.exportSettings(this);},
+      importSettings:()=>{const el=this.settingsFileRef&&this.settingsFileRef.current;if(el)el.click();},
+      settingsFileRef:this.settingsFileRef, onSettingsFile:e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;const r=new FileReader();r.onload=()=>{try{const data=JSON.parse(String(r.result||'{}'));if(window.UpscaleBackend&&window.UpscaleBackend.importSettings)window.UpscaleBackend.importSettings(this,data);else this.setState(data);}catch(err){alert('Invalid settings file');}};r.readAsText(f);},
+      chips:VIS.map(x=>({label:this.modelLabel(x[0],x[0])+(this.mstat(x[0])==='err'?' ✕':this.mstat(x[0])==='dl'?' ↓':''),style:'padding:4px 8px;font-size:calc(12px*var(--fs,1));min-height:0;'+(s.cmpSel.includes(x[0])?'background:var(--color-text);color:var(--color-bg)':''),pick:()=>this.setState(st=>({cmpSel:st.cmpSel.includes(x[0])?st.cmpSel.filter(y=>y!==x[0]):[...st.cmpSel,x[0]]}))})),
+      algoChips:this.algoList().map(a=>({label:a.label,style:'padding:4px 8px;font-size:calc(12px*var(--fs,1));min-height:0;'+((s.cmpAlgoSel||[]).includes(a.name)?'background:var(--color-text);color:var(--color-bg)':''),pick:()=>this.setState(st=>{const cur=st.cmpAlgoSel||[];const n=a.name;return{cmpAlgoSel:cur.includes(n)?cur.filter(y=>y!==n):[...cur,n]};})})),
+      selAll:set({cmpSel:VIS.map(x=>x[0])}), selNone:set({cmpSel:[]}), selAlgoAll:set({cmpAlgoSel:this.algoList().map(a=>a.name)}), selAlgoNone:set({cmpAlgoSel:[]}), startCmp:this.startCmp,
+      cmpProgress:s.cmp.filter(c=>c.done).length+' of '+s.cmp.length+' done', cmpZooms:[1,2,4].map(v=>({label:v+'×',style:act(s.cmpZ===v),pick:set({cmpZ:v})})),
+      autoRegion:()=>{if(cropLocked){alert('Crop is locked while a result is shown. Close comparison or change crop size first.');return;}this.autoRegion();}, cmpMin:s.cmpBig?380:210, cmpSizes:seg([[false,'Small'],[true,'Large']],'cmpBig'), applyLabel:'Use '+this.modelLabel(s.model,s.model)+' for the full image', applyBest:()=>{this.setState({test:false,tool:'select',cmp:[],displayUrl:null,resultUrl:null,urlAfter:null,cropBeforeUrl:null,status:'idle'},()=>{if(this.state.file)this.run(true);});},
+      findBest:this.findBest,
+      runCrop:()=>{if(running)return;if(cropLocked){alert('Crop is locked while a result is shown. Close comparison or change crop size first.');return;}if(!s.file){this.fileRef.current&&this.fileRef.current.click();return;}if(window.UpscaleBackend){this._makeCropBeforeUrl();window.UpscaleBackend.runCropJob(this);}else{this.setState({test:true},()=>this.run(true));}},
+      cmpTiles:(()=>{if(!s.w||!s.cmp.length)return[];const cz=s.cmpZ,first=s.cmp.findIndex(c=>!c.done),dn=s.cmp.filter(c=>c.done),fast=dn.length?Math.min(...dn.map(c=>c.secs)):0;
+        const hd={down:e=>{e.currentTarget.setPointerCapture(e.pointerId);this._tp=[e.clientX,e.clientY];},move:e=>{if(!this._tp)return;const dx=e.clientX-this._tp[0],dy=e.clientY-this._tp[1];this._tp=[e.clientX,e.clientY];this.setState(st=>({cpx:st.cpx+dx,cpy:st.cpy+dy}));},up:()=>{this._tp=null;},wheel:e=>{e.preventDefault();e.stopPropagation();const steps=[1,2,4];let i=steps.indexOf(this.state.cmpZ);if(i<0)i=0;i=Math.max(0,Math.min(steps.length-1,i+(e.deltaY<0?1:-1)));this.setState({cmpZ:steps[i]});}};
+        const outer='position:relative;overflow:hidden;aspect-ratio:1;background:var(--color-neutral-200);cursor:grab;touch-action:none';
+        const panXf='transform:translate('+s.cpx+'px,'+s.cpy+'px) scale('+cz+');';
+        // Full source sized so the crop fills the tile; origin at crop center keeps pan/zoom locked with result tiles.
+        const owPct=(s.w/Math.max(ew,1))*100, ohPct=(s.h/Math.max(eh,1))*100;
+        const innerOrig='position:absolute;width:'+owPct+'%;height:'+ohPct+'%;left:'+(50-s.cx*owPct)+'%;top:'+(50-s.cy*ohPct)+'%;background:'+cssUrl(s.url)+' 0 0/100% 100% no-repeat;image-rendering:pixelated;'+panXf+'transform-origin:'+(s.cx*100)+'% '+(s.cy*100)+'%;';
+        const innerRes=(u)=>'position:absolute;inset:0;background:'+(u?cssUrl(u):'none')+' center/contain no-repeat;image-rendering:auto;'+panXf+'transform-origin:center center;';
+        return [{box:'border:2px solid var(--color-text);display:flex;flex-direction:column',outer,...hd,inner:innerOrig,pending:false,pendingText:'',name:'Original',meta:this.fmtDims(ew,eh)+' px, nearest-neighbour',canUse:false,use:null,useLabel:''}].concat(s.cmp.map((c,i)=>({box:'border:2px solid '+(s.model===c.name?'var(--color-accent)':'var(--color-text)')+';display:flex;flex-direction:column',outer,...hd,inner:innerRes(c.url),pending:!c.done,pendingText:i===first?'Processing…':'Queued',name:c.name,meta:c.done?this.fmtDims(ow,oh)+' px · '+Math.round(c.secs)+' s'+(dn.length>1&&c.secs===fast?' · fastest':''):'~'+Math.round(c.secs)+' s',canUse:!!c.done&&!!c.url,use:()=>{if(running){alert('Stop the current upscale to change settings.');return;}const id=c.id||c.name;if(String(id).startsWith('algo:')){this.setState({method:'classical',algorithm:String(id).slice(5)});}else{this.setState({method:'neural',model:id});}},useLabel:(()=>{const id=c.id||c.name;if(String(id).startsWith('algo:'))return s.method==='classical'&&s.algorithm===String(id).slice(5)?'Selected':'Use this algorithm';return s.model===id?'Selected':'Use this model';})()})));})(), cropSizes:[[32,'32'],[64,'64'],[128,'128'],[256,'256']].map(([v,l])=>({label:l,style:act(s.cropSize===v),pick:()=>{if(running){alert('Stop the current upscale to change settings.');return;}this.setState({cropSize:v,status:'idle',displayUrl:null,resultUrl:null,urlAfter:null,cmp:[]});}})),
+      isWdn:s.model==='realesr-general-wdn-x4v3', denoise:s.denoise, onDenoise:e=>this.setState({denoise:+e.target.value}),
+      fmtOptions:[['auto','Auto'],['png','PNG · lossless'],['jpeg','JPEG'],['jpeg_exif','EXIF-JPEG · keeps metadata'],['webp','WebP'],['tiff','TIFF'],['bmp','BMP'],['tga','TGA · keeps alpha'],['jp2','JPEG 2000'],['psd','PSD · flat'],['psb','PSB · flat, large']].map(x=>({v:x[0],l:x[1]})), fmtSel:s.fmt, onFmt:e=>{if(running){alert('Stop the current upscale to change settings.');return;}this.setState({fmt:e.target.value});},
+      showQ:F==='jpeg'||F==='jpeg_exif'||F==='webp'||F==='jp2', q:s.q, onQ:e=>this.setState({q:+e.target.value}), showTiff:F==='tiff',
+      zooms:[1,2,4,8,16].map(v=>({label:v+'×',style:act(z===v),pick:set({zoom:v,px:0,py:0})})), zoomLabel:'· '+(Math.round(z*10)/10)+'×',
+      // Select only in test crop mode. Outside test, Pan is a toggle (off = compare/drag split).
+      tools:s.test?seg([['select','Select'],['pan','Pan']],'tool'):[{label:'Pan',style:act(s.tool==='pan'),pick:()=>this.setState({tool:s.tool==='pan'?'select':'pan'})}],
+      showReset:Math.abs(s.px)>0.5||Math.abs(s.py)>0.5, resetView:()=>this.setState({px:0,py:0}),
+      showFit:!!(s.test&&!done&&s.w),
+      hint:done?(s.tool==='pan'?'Pan tool on — drag to move. Turn Pan off to drag the compare divider.':'Drag to compare. Scroll to zoom, Shift-drag or Pan to move.'):cropLocked&&s.test?'Crop locked while a result is shown. Close comparison or change crop size to place a new one.':s.test?(s.tool==='pan'?'Pan tool on — drag to move. Switch to Select to place the crop.':'Click or drag to place the crop. Scroll to zoom.'):'Scroll to zoom, Shift-drag or use Pan to move.',
+      fitCrop:()=>{const g=this._g;if(!g)return;const nz=Math.min(32,Math.min(g.sw,g.sh)*0.9/(Math.max(g.ew,g.eh)*g.sc));const cL=g.ox+s.cx*s.w*g.sc,cM=g.oy+s.cy*s.h*g.sc;this.setState({zoom:nz,px:-(cL-g.sw/2)*nz,py:-(cM-g.sh/2)*nz});},
+      scaleLabel:(k%1?k.toFixed(2):k)+'× upscale', srcDims:this.fmtDims(ew,eh), outDims:s.w?this.fmtDims(ow,oh):'—',
+      passes:s.w?(P?P+' × '+this.base()+'×':'none')+(P&&Math.pow(this.base(),P)!==k?' + resize':''):'—', format:fmt, mp:s.w?mpx.toFixed(mpx<10?2:0)+' MP':'—', eta, warn,
+      showPre:!!s.w, rows, sysLabel:SYS.gpu+' · RAM '+fb(SYS.ram)+' · disk '+fb(SYS.disk), fileSize:'≈ '+fb(fileB), fileFull:'≈ '+fb(TF)+' (range '+fb(TF*.7)+' to '+fb(TF*1.4)+')', timeFull:(s.apiEtaLow!=null&&s.apiEtaHigh!=null)?('~'+ft(s.apiEtaLow)+'–'+ft(s.apiEtaHigh)+(s.apiEtaCalibrated?' (from '+(s.apiEtaSamples||1)+' past run'+(s.apiEtaSamples===1?'':'s')+')':'')+' on '+(cpuOnly?'CPU':'GPU')):('~'+ft(TS)+' (range '+ft(TS*.7)+' to '+ft(TS*1.5)+') on '+(cpuOnly?'CPU':'GPU')), blocked:s.blocked&&this._worst==='fail', blockedMsg, runAnyway:()=>{this.setState({blocked:false});this.run(true);},
+      goOpacity:s.file&&!running?1:.45, goLabel:s.test?(running?(s.paused?'Paused · ':'Comparing… ')+s.pct+'%':'Find best model'):(running?(s.paused?'Paused · ':'Upscaling… ')+s.pct+'%':done?'Upscale again':batch?'Upscale '+s.files.length+' images':'Upscale image'), run:s.test?this.findBest:this.run,
+      hasInterrupted:!!(s.interrupted&&s.interrupted.id)&&!running, resumeLabel:(()=>{const ck=s.interrupted&&s.interrupted.checkpoint;const p=ck&&ck.pass_index;return 'Resume interrupted · pass '+(p==null||p===''?'?':p);})(), resumeInterrupted:()=>{if(!window.UpscaleBackend){alert('Server bridge not loaded. Restart the web UI.');return;}window.UpscaleBackend.resumeInterrupted(this);},
+      download:()=>{(batch?s.files:[{url:s.resultUrl||s.url,name:s.name,resultUrl:s.resultUrl}]).forEach((it,i)=>setTimeout(()=>{const a=document.createElement('a');a.href=it.resultUrl||it.url;a.download=it.name.replace(/\.[^.]+$/,'')+'_'+(+this.kFor({w:it.w||s.w}).toFixed(2))+'x.'+ext;a.click();},i*300));},
+      dlLabel:batch?'Download all ('+s.files.length+' files)':'Download '+fmt, isBatch:batch, batchTitle:'BATCH · '+s.files.length+' IMAGES', batchTotal:s.files.length+' images · '+fb(tFile)+' · ~'+ft(tSecs), batchRows:items.map(x=>({name:x.name,dims:this.fmtDims(x.o1,x.o2)+' px',size:'≈ '+fb(x.fb)})),
+      showStrip:batch, strip:s.files.map(it=>({box:'flex:none;width:120px;border:2px solid '+(it.id===s.activeId?'var(--color-accent)':'var(--color-text)')+';position:relative;cursor:pointer;background:var(--color-bg)',thumb:'height:72px;background:url("'+String(it.url||'').replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'") center/cover no-repeat',bar:'height:4px;background:var(--color-accent);width:'+(it.st==='done'?100:it.pct||0)+'%',name:it.name,status:it.st==='done'?'Done':it.st==='run'?it.pct+'%':s.status==='running'?'Queued':'Ready',pick:()=>this.pickItem({id:it.id}),remove:e=>{e.stopPropagation();this.removeItem({id:it.id});}})),
+      helpBtn:s.lang==='pl'?'Pomoc':'Help', setBtn:s.lang==='pl'?'Ustawienia':'Settings', isLightT:s.theme==='light', isDarkT:s.theme==='dark', isSysT:s.theme==='system', theme:s.theme, fsize:s.fsize, lang:s.lang,
+      onTheme:e=>this.setPref('theme',e.target.value), onFsize:e=>this.setPref('fsize',e.target.value), onLang:e=>this.setPref('lang',e.target.value),
+      langOpts:this.LANGS.map(l=>({code:l[0],label:l[1]+(l[2]?'':' · soon'),off:!l[2]})),
+      filters:this.FDEF.map(([k,label,stage,desc])=>({label,stage,desc,on:s.filt[k].on,v:s.filt[k].v,toggle:e=>{const on=e.target.checked;this.setState(st=>({filt:{...st.filt,[k]:{...st.filt[k],on}}}));},setV:e=>{const v=+e.target.value;this.setState(st=>({filt:{...st.filt,[k]:{...st.filt[k],v}}}));}})), resetFilters:()=>this.setState(st=>({filt:Object.fromEntries(Object.entries(st.filt).map(([k,x])=>[k,{...x,on:false}]))})),
+      setOpen:s.setOpen, toggleSet:set({setOpen:!s.setOpen}), themes:pref([['light','Light'],['dark','Dark']],'theme'), fsizes:pref([['normal','Normal'],['larger','Larger'],['largest','Largest']],'fsize'), langs:pref([['en','English'],['pl','Polski']],'lang'),
+      showAbout:()=>{if(window.UpscaleUI&&window.UpscaleUI.showAbout)window.UpscaleUI.showAbout();},
+      showLicense:()=>{if(window.UpscaleUI&&window.UpscaleUI.showLicense)window.UpscaleUI.showLicense();},
+      checkUpdates:()=>{if(window.UpscaleUI&&window.UpscaleUI.checkUpdates)window.UpscaleUI.checkUpdates();},
+      isRunning:running, pauseLabel:s.paused?'Resume':'Pause', togglePause:()=>{const n=!s.paused;this.setState({paused:n});if(window.UpscaleBackend){if(n)window.UpscaleBackend.pause(this);else window.UpscaleBackend.resume(this);}}, cancelRun:()=>{clearInterval(this.timer);this._batchAbort=true;if(window.UpscaleBackend)window.UpscaleBackend.cancel(this);else this.setState({status:'idle',pct:0,paused:false,stage:'Cancelled'});},
+      helpOpen:s.helpOpen, openHelp:set({helpOpen:true}), closeHelp:set({helpOpen:false}), prevHelp:()=>this.setState(st=>({helpIdx:(st.helpIdx+this.HELP.length-1)%this.HELP.length})), nextHelp:()=>this.setState(st=>({helpIdx:(st.helpIdx+1)%this.HELP.length})),
+      helpBox:'position:fixed;top:0;bottom:0;'+(s.helpSide==='left'?'left:0;border-right':'right:0;border-left')+':2px solid var(--color-text);width:min(400px,100vw);z-index:30;background:var(--color-bg);padding:24px;overflow-y:auto;display:flex;flex-direction:column;gap:16px',
+      helpStep:'Step '+(s.helpIdx+1)+' of '+this.HELP.length, helpTitle:this.HELP[s.helpIdx][s.lang==='pl'?'pl':'en'][0], helpBody:this.HELP[s.helpIdx][s.lang==='pl'?'pl':'en'][1].map(x=>({text:x})),
+      helpMissing:helpOpenMissing, topics:this.HELP.map((h,i)=>({label:h[s.lang==='pl'?'pl':'en'][0],style:act(i===s.helpIdx),pick:set({helpIdx:i})})),
+      cli, history:(s.history||[]).map((h)=>({name:h.name,info:h.info,time:h.time,open:()=>{if(window.UpscaleBackend&&window.UpscaleBackend.openHistory)window.UpscaleBackend.openHistory(this,h);}})), noHistory:!(s.history&&s.history.length)
+    };
+  }
+}
+</script>
+
+<script src="/ui/bridge/core.js"></script>
+<script src="/ui/bridge/session.js"></script>
+<script src="/ui/bridge/jobs.js"></script>
+<script src="/ui/bridge/compare.js"></script>
+<script src="/ui/bridge/estimate.js"></script>
+<script src="/ui/backend-bridge.js?v=nofilt1"></script>
+<script>if(window.UpscaleBackend)window.UpscaleBackend.rememberView('advanced');</script>
+
+</body>
+</html>

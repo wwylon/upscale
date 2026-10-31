@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/ui/support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="/ui/_ds/modernist-317f259f-5541-4861-8bcf-5422b9067f44/styles.css">
+<script src="/ui/_ds/modernist-317f259f-5541-4861-8bcf-5422b9067f44/_ds_bundle.js"></script>
+<style>body{margin:0;background:var(--color-bg)}a{color:var(--color-accent-700)}a:hover{color:var(--color-accent-600)}</style>
+</helmet>
+<div style="min-height:100vh;color:var(--color-text);font-family:var(--font-body)">
+  <header style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:16px 24px;border-bottom:2px solid var(--color-divider);flex-wrap:wrap">
+    <div style="display:flex;align-items:baseline;gap:16px"><span style="font-family:var(--font-heading);font-weight:800;font-size:22px;letter-spacing:-0.02em">UPSCALE<span style="color:var(--color-accent)">.</span></span><span style="font-size:13px">Model library</span></div>
+    <a href="./" style="font-size:14px">← Back to upscaler</a>
+  </header>
+  <main style="display:flex;flex-wrap:wrap;align-items:stretch">
+    <section style="flex:3 1 560px;min-width:0;border-right:2px solid var(--color-divider)">
+      <div style="padding:24px;display:flex;flex-direction:column;gap:16px;border-bottom:2px solid var(--color-divider)">
+        <h2 style="margin:0">Installed models</h2>
+        <sc-if value="{{ attn }}" hint-placeholder-val="{{ false }}"><div style="border:2px solid var(--color-accent);background:var(--color-accent-100);padding:12px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><b>Some models are not ready.</b> {{ attnText }}. They cannot be used until fixed.</div><button class="btn btn-primary" onClick="{{ fixAll }}">Fix all</button></div></sc-if>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));border-top:2px solid var(--color-divider)">
+          <div style="padding:12px 0"><div style="font-size:12px">Models</div><div style="font-weight:800;font-size:28px">{{ count }}</div></div>
+          <div style="padding:12px 0"><div style="font-size:12px">Disk used</div><div style="font-weight:800;font-size:28px">{{ disk }}</div></div>
+          <div style="padding:12px 0"><div style="font-size:12px">Folder</div><div style="font-weight:700;font-size:14px;word-break:break-all">{{ modelsDir }}</div></div>
+        </div>
+        <p style="margin:0;font-size:13px;line-height:1.45;opacity:.9">Hide models to simplify lists. Display name and description are saved on this device. Hiding does not delete weights.</p>
+        <div class="seg"><sc-for list="{{ filters }}" as="f" hint-placeholder-count="5"><button class="seg-opt" style="{{ f.style }}" onClick="{{ f.pick }}">{{ f.label }}</button></sc-for></div>
+      </div>
+      <div style="overflow-x:auto">
+      <table class="table" style="width:100%">
+        <thead><tr><th>Name</th><th>Type</th><th>Scale</th><th>Size</th><th>Source</th><th>Status</th><th></th></tr></thead>
+        <tbody><sc-for list="{{ rows }}" as="m" hint-placeholder-count="6"><tr>
+          <td style="min-width:220px">
+            <div style="font-weight:700;font-size:12px;opacity:.75;margin-bottom:6px">{{ m.id }}</div>
+            <label style="display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:8px"><input type="checkbox" checked="{{ m.visible }}" onChange="{{ m.toggleVis }}" style="accent-color:var(--color-accent);width:18px;height:18px;margin:0"> Visible in lists</label>
+            <div class="field" style="margin-bottom:8px"><label>Display name</label><input class="input" value="{{ m.label }}" onInput="{{ m.onLabel }}"></div>
+            <div class="field"><label>Description</label><input class="input" value="{{ m.desc }}" onInput="{{ m.onDesc }}"></div>
+          </td>
+          <td>{{ m.kind }}</td><td>{{ m.scale }}</td><td>{{ m.size }}</td><td>{{ m.source }}</td>
+          <td><span class="{{ m.cls }}">{{ m.status }}</span></td>
+          <td><button class="btn btn-ghost" onClick="{{ m.act }}">{{ m.actLabel }}</button></td>
+        </tr></sc-for></tbody>
+      </table></div>
+    </section>
+
+    <aside style="flex:1 1 320px;padding:24px;display:flex;flex-direction:column;gap:20px">
+      <h3 style="margin:0">Add an external model</h3>
+      <div class="seg"><sc-for list="{{ sources }}" as="f" hint-placeholder-count="3"><button class="seg-opt" style="{{ f.style }}" onClick="{{ f.pick }}">{{ f.label }}</button></sc-for></div>
+      <div class="field"><label>Name</label><input class="input" placeholder="4x-MyModel" value="{{ name }}" onInput="{{ onName }}"></div>
+      <sc-if value="{{ isUrl }}" hint-placeholder-val="{{ true }}"><div class="field"><label>Download URL</label><input class="input" placeholder="https://…/model.safetensors" value="{{ src }}" onInput="{{ onSrc }}"></div>
+        <div class="field"><label>SHA-256 (optional)</label><input class="input" placeholder="verify the download" value="{{ sha }}" onInput="{{ onSha }}"></div></sc-if>
+      <sc-if value="{{ isFile }}" hint-placeholder-val="{{ false }}"><div style="border:2px dashed var(--color-text);padding:24px;display:flex;flex-direction:column;gap:8px"><div style="font-weight:700">Drop a .safetensors or .pth file</div><div style="font-size:13px">The file is copied to the models folder and hashed.</div><input type="file" accept=".pth,.pt,.safetensors,.onnx" ref="{{ fileRef }}" onChange="{{ onFile }}" style="display:none"><button class="btn btn-secondary" style="align-self:flex-start" onClick="{{ pickFile }}">Choose file…</button><sc-if value="{{ fileName }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;font-weight:700">{{ fileName }}</div></sc-if></div></sc-if>
+      <sc-if value="{{ isPath }}" hint-placeholder-val="{{ false }}"><div class="field"><label>Path on this machine</label><input class="input" placeholder="D:\ai\models\4x-MyModel.pth" value="{{ src }}" onInput="{{ onSrc }}"></div><div style="font-size:13px">Used in place; nothing is copied.</div></sc-if>
+      <div class="field"><label>Native scale</label><div class="seg"><sc-for list="{{ scales }}" as="f" hint-placeholder-count="3"><button class="seg-opt" style="{{ f.style }}" onClick="{{ f.pick }}">{{ f.label }}</button></sc-for></div></div>
+      <div style="border:2px solid var(--color-accent);padding:12px;font-size:13px;line-height:1.45">PyTorch .pth files can run code when loaded. Add them only from sources you trust. .safetensors files only hold weights and are safe to load.</div>
+      <div style="font-size:13px;line-height:1.5">Architecture (ESRGAN, SPAN, HAT, DAT, …) is detected from the weights. Find models on <a href="https://openmodeldb.info" target="_blank" rel="noopener">OpenModelDB ↗</a> or <a href="https://huggingface.co/models?other=super-resolution" target="_blank" rel="noopener">Hugging Face ↗</a>.</div>
+      <button class="btn btn-primary" style="opacity:{{ addOpacity }}" onClick="{{ add }}">Add to library</button>
+      <sc-if value="{{ msg }}" hint-placeholder-val="{{ false }}"><div style="font-size:14px;font-weight:700">{{ msg }}</div></sc-if>
+    </aside>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  fileRef = React.createRef();
+  state = { filter:'all', mode:'url', name:'', src:'', sha:'', scale:4, msg:'', file:null, models:[], modelsDir:'models/', hiddenModels:[], modelMeta:{} };
+  componentDidMount(){
+    const prefs=this.loadModelPrefs();
+    this.setState(prefs);
+    this.refreshModels();
+  }
+  loadModelPrefs(){
+    let hidden=[],meta={};
+    try{hidden=JSON.parse(localStorage.getItem('upscale.hiddenModels')||'[]');if(!Array.isArray(hidden))hidden=[];}catch(e){hidden=[];}
+    try{meta=JSON.parse(localStorage.getItem('upscale.modelMeta')||'{}');if(!meta||typeof meta!=='object')meta={};}catch(e){meta={};}
+    return{hiddenModels:hidden,modelMeta:meta};
+  }
+  saveHidden(hidden){try{localStorage.setItem('upscale.hiddenModels',JSON.stringify(hidden||[]));}catch(e){}}
+  saveMeta(meta){try{localStorage.setItem('upscale.modelMeta',JSON.stringify(meta||{}));}catch(e){}}
+  isHidden(name){return(this.state.hiddenModels||[]).includes(name);}
+  async refreshModels(){
+    try{
+      let list=[];
+      let modelsDir=this.state.modelsDir||'models/';
+      if(window.UpscaleBackend&&window.UpscaleBackend.hydrateSystem){
+        await window.UpscaleBackend.hydrateSystem(this);
+      }
+      try{
+        const sysRes=await fetch('/api/system');
+        if(sysRes.ok){
+          const sys=await sysRes.json();
+          if(sys.models_dir) modelsDir=sys.models_dir;
+        }
+      }catch(e){}
+      if(!modelsDir||modelsDir==='models/'){
+        try{
+          const aboutRes=await fetch('/api/about');
+          if(aboutRes.ok){
+            const about=await aboutRes.json();
+            const m=about.models||{};
+            modelsDir=m.models_dir||about.models_dir||modelsDir;
+          }
+        }catch(e){}
+      }
+      const api=window.__UPSCALE_MODELS__;
+      if(Array.isArray(api)&&api.length){
+        list=api.map(m=>[m.name,m.description||'',(m.tags&&m.tags[0])||'General',m.scale||4,m.size_bytes||0,m.source==='built-in'?'Built-in':'External',m.status==='installed'?'ok':m.status==='failed'?'err':'dl']);
+      }else{
+        const res=await fetch('/api/models');
+        if(res.ok){
+          const api2=await res.json();
+          list=(api2||[]).map(m=>[m.name,m.description||'',(m.tags&&m.tags[0])||'General',m.scale||4,m.size_bytes||0,m.source==='built-in'?'Built-in':'External',m.status==='installed'?'ok':m.status==='failed'?'err':'dl']);
+        }
+      }
+      this.setState({models:list,modelsDir:modelsDir||'models/'});
+    }catch(e){ this.setState({msg:String(e.message||e)}); }
+  }
+  renderVals() {
+    const s = this.state, set = o => () => this.setState(o), act = on => on ? 'background:var(--color-text);color:var(--color-bg)' : '';
+    const list = s.models.filter(m => s.filter === 'all' || m[2] === s.filter || (s.filter === 'External' && m[5] === 'External'));
+    const mb = n => { const v=typeof n==='number'?n:0; if(v>=1e9)return (v/1e9).toFixed(1)+' GB'; if(v>=1e6)return Math.max(1,Math.round(v/1e6))+' MB'; if(v>=1e3)return Math.max(1,Math.round(v/1e3))+' KB'; return v?v+' B':'—'; };
+    const installed = s.models.filter(m => m[6] === 'ok');
+    const totalBytes = installed.reduce((a, m) => a + (m[4]||0), 0);
+    const ready = s.name.trim() && (s.mode === 'file' ? !!s.file : !!s.src.trim());
+    const metaOf = id => (s.modelMeta||{})[id]||{};
+    return {
+      count: s.models.length, attn: s.models.filter(m => m[6] !== 'ok').length > 0, attnText: s.models.filter(m => m[6] === 'err').length + ' failed to load, ' + s.models.filter(m => m[6] === 'dl').length + ' not downloaded',
+      fixAll: async () => { const names=(window.__UPSCALE_MODELS__||[]).filter(m=>m.status!=='installed').map(m=>m.name);this.setState({msg:'Downloading…'});try{ for(const n of names){ if(window.UpscaleBackend) await window.UpscaleBackend.downloadModel(n); }await this.refreshModels();this.setState({msg:'All models are ready.'}); }catch(e){ this.setState({msg:String(e.message||e)}); } },
+      disk: mb(totalBytes), modelsDir: s.modelsDir || 'models/',
+      filters: ['all', 'Photo', 'Anime', 'Fast', 'External'].map(v => ({ label: v === 'all' ? 'All' : v, style: act(s.filter === v), pick: set({ filter: v }) })),
+      rows: list.map(m => {
+        const id=m[0], meta=metaOf(id);
+        return {
+          id, label: meta.label!=null?meta.label:id, desc: meta.description!=null?meta.description:(m[1]||''),
+          visible: !this.isHidden(id),
+          toggleVis: e => { const on=e.target.checked; this.setState(st=>{ const hidden=on?(st.hiddenModels||[]).filter(n=>n!==id):[...(st.hiddenModels||[]).filter(n=>n!==id),id]; this.saveHidden(hidden); return{hiddenModels:hidden}; }); },
+          onLabel: e => { const v=e.target.value; this.setState(st=>{ const modelMeta={...(st.modelMeta||{}),[id]:{...(st.modelMeta||{})[id],label:v}}; this.saveMeta(modelMeta); return{modelMeta}; }); },
+          onDesc: e => { const v=e.target.value; this.setState(st=>{ const modelMeta={...(st.modelMeta||{}),[id]:{...(st.modelMeta||{})[id],description:v}}; this.saveMeta(modelMeta); return{modelMeta}; }); },
+          kind: m[2], scale: m[3] + '×', size: m[6] === 'dl' ? 'not downloaded' : m[6] === 'err' ? 'corrupt' : mb(m[4]), source: m[5],
+          status: m[6] === 'ok' ? 'Installed' : m[6] === 'err' ? 'Failed to load' : 'Not downloaded', cls: m[6] === 'ok' ? 'tag tag-outline' : m[6] === 'err' ? 'tag tag-accent' : 'tag tag-neutral',
+          actLabel: m[5] === 'External' && m[6] === 'ok' ? 'Remove' : m[6] === 'ok' ? 'Verify' : m[6] === 'err' ? 'Re-download' : 'Download',
+          act: async () => {
+            if(m[5]==='External' && m[6]==='ok'){ this.setState({msg:'Removing external models is not supported yet — delete the file under the models folder manually.'}); return; }
+            if(m[6]==='ok'){ this.setState({msg:m[0]+': installed'}); return; }
+            try{ this.setState({msg:m[0]+': downloading…'}); if(window.UpscaleBackend) await window.UpscaleBackend.downloadModel(m[0]); await this.refreshModels(); this.setState({msg:m[0]+': ready'}); }catch(e){ this.setState({msg:m[0]+': '+String(e.message||e)}); }
+          }
+        };
+      }),
+      sources: [['url', 'URL'], ['file', 'Upload file'], ['path', 'Local path']].map(([v, l]) => ({ label: l, style: act(s.mode === v), pick: set({ mode: v, file:null }) })),
+      scales: [2, 4, 8].map(v => ({ label: v + '×', style: act(s.scale === v), pick: set({ scale: v }) })),
+      isUrl: s.mode === 'url', isFile: s.mode === 'file', isPath: s.mode === 'path',
+      name: s.name, src: s.src, sha: s.sha, msg: s.msg, fileName: s.file ? (s.file.name||'selected') : '',
+      fileRef: this.fileRef, pickFile:()=>{const el=this.fileRef&&this.fileRef.current;if(el)el.click();},
+      onFile:e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;const base=f.name.replace(/\.(pth|pt|safetensors|onnx)$/i,'');this.setState({file:f,name:s.name.trim()?s.name:base});},
+      onName: e => this.setState({ name: e.target.value }), onSrc: e => this.setState({ src: e.target.value }), onSha: e => this.setState({ sha: e.target.value }),
+      addOpacity: ready ? 1 : .45,
+      add: async () => {
+        if (!ready) return;
+        const n=this.state.name.trim(), u=this.state.src.trim(), scale=this.state.scale, file=this.state.file;
+        try{
+          if(this.state.mode==='file'){
+            if(!file) return;
+            if(window.UpscaleBackend&&window.UpscaleBackend.uploadModel) await window.UpscaleBackend.uploadModel(file,{name:n,scale,description:'Uploaded · '+scale+'×'});
+            else {
+              const fd=new FormData(); fd.append('file',file,file.name); fd.append('name',n); fd.append('scale',String(scale));
+              const res=await fetch('/api/models/upload',{method:'POST',body:fd}); if(!res.ok) throw new Error(await res.text());
+            }
+          } else {
+            const body=this.state.mode==='url'||/^https?:/.test(u)?{name:n,url:u,scale}:{name:n,path:u,scale};
+            if(this.state.sha.trim()) body.sha256=this.state.sha.trim();
+            if(window.UpscaleBackend) await window.UpscaleBackend.addModel(body);
+          }
+          await this.refreshModels();
+          this.setState({ name:'', src:'', sha:'', file:null, msg:'Registered on server. Architecture detected on first use.', filter:'all' });
+        }catch(e){ this.setState({msg:'Failed: '+String(e.message||e)}); }
+      }
+    };
+  }
+}
+</script>
+
+<script src="/ui/bridge/core.js"></script>
+<script src="/ui/bridge/session.js"></script>
+<script src="/ui/bridge/jobs.js"></script>
+<script src="/ui/bridge/compare.js"></script>
+<script src="/ui/bridge/estimate.js"></script>
+<script src="/ui/backend-bridge.js"></script>
+
+</body>
+</html>

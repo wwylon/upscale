@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/ui/support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="/ui/_ds/modernist-317f259f-5541-4861-8bcf-5422b9067f44/styles.css">
+<script src="/ui/_ds/modernist-317f259f-5541-4861-8bcf-5422b9067f44/_ds_bundle.js"></script>
+<style>body{margin:0;background:var(--color-bg)}a{color:var(--color-accent-700)}a:hover{color:var(--color-accent-600)}@media (min-width:1000px){.s-root{height:100vh;overflow:hidden}}</style>
+</helmet>
+<div class="s-root" style="min-height:100vh;display:flex;flex-direction:column;color:var(--color-text);font-family:var(--font-body)">
+  <header style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 24px;border-bottom:2px solid var(--color-divider);flex-wrap:wrap">
+    <div style="display:flex;align-items:baseline;gap:16px"><span style="font-family:var(--font-heading);font-weight:800;font-size:22px;letter-spacing:-0.02em">UPSCALE<span style="color:var(--color-accent)">.</span></span><span style="font-size:13px">Simple view</span></div>
+    <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><a href="library.html" style="font-size:14px;font-weight:700">Models</a><a href="index.html" onClick="{{ goAdvanced }}" style="font-size:14px;font-weight:700">Advanced view →</a></div>
+  </header>
+  <main style="flex:1;min-height:0;display:flex;flex-wrap:wrap">
+    <section style="flex:3 1 520px;min-width:0;display:flex;flex-direction:column;border-right:2px solid var(--color-divider)">
+      <input type="file" accept=".png,.jpg,.jpeg,.webp,.tif,.tiff,.bmp,.tga,.psd,.psb,.jp2,.j2k,.jpf,.jpx,image/png,image/jpeg,image/webp,image/tiff,image/bmp" ref="{{ fileRef }}" onChange="{{ onFile }}" style="display:none">
+      <sc-if value="{{ noFile }}" hint-placeholder-val="{{ true }}">
+        <div onClick="{{ pick }}" onDragOver="{{ onOver }}" onDrop="{{ onDrop }}" style="flex:1;min-height:420px;margin:24px;border:2px dashed var(--color-text);display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:20px;padding:40px;cursor:pointer">
+          <div style="font-family:var(--font-heading);font-weight:800;font-size:clamp(32px,5vw,56px);letter-spacing:-0.02em;line-height:1.02">Make a small image big.</div>
+          <div style="font-size:15px;max-width:420px;line-height:1.5">Drop a picture here. Pick what it is and how big you want it. Nothing leaves your computer.</div>
+          <button class="btn btn-primary" style="min-width:200px" onClick="{{ pick }}">Choose a picture →</button>
+        </div>
+      </sc-if>
+      <sc-if value="{{ hasFile }}" hint-placeholder-val="{{ false }}">
+        <div ref="{{ stageRef }}" onPointerDown="{{ down }}" onPointerMove="{{ move }}" onPointerUp="{{ up }}" onWheel="{{ onWheel }}" style="flex:1;min-height:420px;position:relative;overflow:hidden;background:var(--color-neutral-200);touch-action:none;cursor:{{ cursor }}">
+          <div style="{{ afterStyle }}"></div>
+          <sc-if value="{{ isDone }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;inset:0;overflow:hidden;clip-path:inset(0 {{ clipRight }}% 0 0)"><div style="{{ beforeStyle }}"></div></div>
+            <div style="position:absolute;top:0;bottom:0;width:2px;background:var(--color-accent);left:{{ split }}%"><div style="position:absolute;top:50%;left:-19px;width:40px;height:40px;margin-top:-20px;background:var(--color-accent);color:var(--color-bg);display:flex;align-items:center;justify-content:center;font-weight:800">↔</div></div>
+            <span class="tag tag-neutral" style="position:absolute;left:16px;top:16px">Before</span>
+            <span class="tag tag-accent" style="position:absolute;right:16px;top:16px">After</span>
+          </sc-if>
+          <sc-if value="{{ isRunning }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;inset:0;background:color-mix(in srgb,var(--color-bg) 82%,transparent);display:flex;flex-direction:column;justify-content:flex-end;padding:24px;gap:12px"><div style="font-family:var(--font-heading);font-weight:800;font-size:56px;letter-spacing:-0.02em;line-height:1">{{ pct }}%</div><div style="font-size:14px">{{ stage }}</div><button class="btn btn-secondary" style="align-self:flex-start" onClick="{{ cancel }}">Cancel</button></div></sc-if>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 24px;border-top:2px solid var(--color-divider);flex-wrap:wrap">
+          <span style="font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ name }} · {{ srcDims }} px{{ zoomLabel }}</span>
+          <span style="font-size:13px">{{ hint }}</span>
+          <button class="btn btn-ghost" onClick="{{ clear }}">Choose another</button>
+        </div>
+      </sc-if>
+    </section>
+
+    <aside style="flex:1 1 340px;max-width:100%;display:flex;flex-direction:column;overflow-y:auto">
+      <section style="padding:24px;display:flex;flex-direction:column;gap:12px;border-bottom:2px solid var(--color-divider)">
+        <div style="font-size:12px;font-weight:700;letter-spacing:.08em">1 · WHAT IS IT?</div>
+        <div style="display:flex;flex-direction:column">
+          <sc-for list="{{ types }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.pick }}" style="{{ o.style }}"><span style="font-weight:700;font-size:15px">{{ o.title }}</span><span style="font-size:13px">{{ o.note }}</span></button></sc-for>
+        </div>
+      </section>
+      <section style="padding:24px;display:flex;flex-direction:column;gap:12px;border-bottom:2px solid var(--color-divider)">
+        <div style="font-size:12px;font-weight:700;letter-spacing:.08em">2 · HOW BIG?</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"><sc-for list="{{ sizes }}" as="o" hint-placeholder-count="3"><button class="btn btn-secondary" style="{{ o.style }}" onClick="{{ o.pick }}">{{ o.label }}</button></sc-for></div>
+        <div style="font-family:var(--font-heading);font-weight:800;font-size:28px;letter-spacing:-0.02em;line-height:1.1">{{ outDims }} px</div>
+        <div style="font-size:13px">{{ outInfo }}</div>
+      </section>
+      <section style="padding:24px;display:flex;flex-direction:column;gap:14px;flex:1">
+        <label style="display:flex;gap:12px;align-items:flex-start;font-size:14px;line-height:1.4"><input type="checkbox" checked="{{ preview }}" onChange="{{ onPreview }}" style="accent-color:var(--color-accent);width:18px;height:18px;margin:2px 0 0"><span><b>Try a small part first</b><br><span style="font-size:13px">Upscales a 512 px square in the middle, so you see the quality in seconds.</span></span></label>
+        <button class="btn btn-primary btn-block" style="opacity:{{ goOpacity }}" onClick="{{ run }}">{{ goLabel }}</button>
+        <sc-if value="{{ isDone }}" hint-placeholder-val="{{ false }}"><button class="btn btn-secondary btn-block" onClick="{{ download }}">Download</button></sc-if>
+        <div style="font-size:13px;line-height:1.5;border-top:2px solid var(--color-divider);padding-top:12px;margin-top:auto">Chosen for you: {{ auto }}. <a href="index.html" onClick="{{ goAdvanced }}">Change in advanced view</a></div>
+      </section>
+    </aside>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  fileRef = React.createRef(); stageRef = React.createRef();
+  TYPES = [['photo','Photo','People, places, objects','RealESRGAN_x4plus'],['art','Drawing or anime','Clean lines and flat colour','RealESRGAN_x4plus_anime_6B'],['old','Old or compressed picture','Noisy, blocky or blurry','realesr-general-wdn-x4v3']];
+  state = { file:null, url:null, name:'', w:0, h:0, type:'photo', scale:4, preview:false, status:'idle', pct:0, split:50, resultUrl:null, zoom:1, px:0, py:0, tool:'select' };
+  componentDidMount(){ if(window.UpscaleBackend&&window.UpscaleBackend.rememberView)window.UpscaleBackend.rememberView('simple');else{try{localStorage.setItem('upscale.view','simple');document.cookie='upscale_view=simple;path=/;max-age=31536000;SameSite=Lax';}catch(e){}} try{ const p=JSON.parse(localStorage.getItem('upscale.prefs')||'{}'), r=document.documentElement.style;
+    if(p.theme==='dark'||(p.theme==='system'&&matchMedia('(prefers-color-scheme: dark)').matches)){ const d={'--color-bg':'#1b1a19','--color-surface':'#262423','--color-text':'#f3f2f2','--color-divider':'color-mix(in srgb, #f3f2f2 40%, transparent)','--color-neutral-100':'#2d2b2b','--color-neutral-200':'#3a3737','--color-neutral-300':'#4c4949','--color-accent-100':'#4d170e','--color-accent-700':'#ff9783','--color-accent-800':'#ffc4b8'}; for(const k in d) r.setProperty(k,d[k]); r.colorScheme='dark'; }
+    r.setProperty('--fs',({normal:1,larger:1.15,largest:1.3})[p.fsize]||1); }catch(e){} if(window.UpscaleBackend)window.UpscaleBackend.restoreSession(this); const el=this.stageRef&&this.stageRef.current; if(el&&!this._wheel){this._wheel=true;el.addEventListener('wheel',(e)=>{e.preventDefault();const s=this.state,r=el.getBoundingClientRect();const mx=e.clientX-r.left-r.width/2,my=e.clientY-r.top-r.height/2;const nz=Math.max(1,Math.min(32,(s.zoom||1)*(e.deltaY<0?1.25:0.8)));const k=nz/(s.zoom||1);this.setState({zoom:nz,px:nz===1?0:mx-(mx-(s.px||0))*k,py:nz===1?0:my-(my-(s.py||0))*k});},{passive:false});} }
+  componentWillUnmount(){ clearInterval(this.t); }
+  INPUT_EXT=/\.(png|jpe?g|webp|tiff?|bmp|tga|psd|psb|jp2|j2k|jpf|jpx)$/i;
+  VECTOR_EXT=/\.(svgz?|eps|ai|emf|wmf)$/i;
+  VECTOR_MIME=/^(image\/svg|image\/svg\+xml|application\/postscript|application\/illustrator)/i;
+  SERVER_DECODE_EXT=/\.(tga|psd|psb|jp2|j2k|jpf|jpx)$/i;
+  applyLoaded=(f,url,w,h)=>{ this.setState({file:f,url,name:f.name,w,h,status:'idle',pct:0,split:50,resultUrl:null,displayUrl:null,urlAfter:null,zoom:1,px:0,py:0}); if(window.UpscaleBackend&&window.UpscaleBackend.suggest){ window.UpscaleBackend.suggest(f,true).then(s=>{ if(!s)return; const map={RealESRGAN_x4plus:'photo',RealESRGAN_x4plus_anime_6B:'art','realesr-general-wdn-x4v3':'old'}; const t=map[s.model]; if(t)this.setState({type:t,suggestReason:s.reason||''}); }).catch(()=>{}); } };
+  loadViaServer=(f)=>{(window.UpscaleBackend&&window.UpscaleBackend.decodePreview?window.UpscaleBackend.decodePreview(f):Promise.reject(new Error('no bridge'))).then(({blob,w,h})=>{const url=URL.createObjectURL(blob);this.applyLoaded(f,url,w,h);}).catch(e=>alert('Could not open '+f.name+': '+(e.message||e)));};
+  load=(f)=>{ if(!f)return; if(this.VECTOR_EXT.test(f.name||'')||this.VECTOR_MIME.test(f.type||'')){alert('Vector images (SVG, EPS, AI, …) are not supported. Export or rasterize to PNG, TIFF, or another bitmap format first.');return;} if(!this.INPUT_EXT.test(f.name||'')){alert('Unsupported format. Use PNG, JPG, WebP, TIFF, BMP, TGA, PSD, PSB or JPEG 2000.');return;} if(this.SERVER_DECODE_EXT.test(f.name||'')){this.loadViaServer(f);return;} const url=URL.createObjectURL(f),im=new Image(); im.onload=()=>this.applyLoaded(f,url,im.naturalWidth,im.naturalHeight); im.onerror=()=>{URL.revokeObjectURL(url);this.loadViaServer(f);}; im.src=url; };
+  run=()=>{ if(window.UpscaleBackend){ window.UpscaleBackend.runSimple(this); return; } };
+  setSplit=(e)=>{ const r=this.stageRef.current.getBoundingClientRect(); this.setState({split:Math.max(0,Math.min(100,(e.clientX-r.left)/r.width*100))}); };
+  renderVals(){
+    const s=this.state, set=o=>()=>this.setState(o), done=s.status==='done', running=s.status==='running';
+    const ow=s.w*s.scale, oh=s.h*s.scale, mp=ow*oh/1e6, secsLocal=s.preview?3:Math.max(2,mp/ (s.scale===8?3:s.scale===4?4:8)*1.2+2);
+    const secs=(s.apiEtaLow!=null&&s.apiEtaHigh!=null)?(s.apiEtaLow+s.apiEtaHigh)/2:secsLocal;
+    if(s.w&&window.UpscaleBackend&&window.UpscaleBackend.maybeEstimate){ const t=this.TYPES.find(x=>x[0]===s.type); window.UpscaleBackend.maybeEstimate(this,{src_w:s.w,src_h:s.h,scale:s.scale,model:(t&&t[3])||'RealESRGAN_x4plus',device:'auto'}); }
+    const t=this.TYPES.find(x=>x[0]===s.type), fmtT=x=>x<60?Math.round(x)+' s':Math.round(x/60)+' min', fb=n=>n>=1e9?(n/1e9).toFixed(1)+' GB':Math.round(n/1e6)+' MB', big=Math.max(ow,oh)>20000;
+    const afterSrc=(done&&(s.displayUrl||s.urlAfter||s.resultUrl))?(s.displayUrl||s.urlAfter||s.resultUrl):s.url;const z=s.zoom||1,px=s.px||0,py=s.py||0;
+    const xf='transform:translate('+px+'px,'+py+'px) scale('+z+');transform-origin:center center;';
+    const cssUrl=(u)=>{if(!u)return'none';const x=String(u).replace(/\\/g,'\\\\').replace(/"/g,'\\"');return 'url("'+x+'")';};
+    const layB='position:absolute;inset:0;background:'+cssUrl(s.url)+' center/contain no-repeat;pointer-events:none;'+xf;
+    const layA='position:absolute;inset:0;background:'+cssUrl(afterSrc)+' center/contain no-repeat;pointer-events:none;'+xf;
+    return {
+      fileRef:this.fileRef, stageRef:this.stageRef, noFile:!s.url, hasFile:!!s.url, isDone:done, isRunning:running, pct:s.pct, stage:s.stage||'Working on it…', name:s.name, srcDims:s.w?s.w.toLocaleString('en')+'×'+s.h.toLocaleString('en'):'',
+      zoomLabel:z!==1?' · '+Math.round(z*10)/10+'×':'',
+      pick:()=>{if(running){alert('Stop the current upscale to change settings.');return;}this.fileRef.current&&this.fileRef.current.click();}, onFile:e=>{this.load(e.target.files[0]);e.target.value='';},
+      onOver:e=>e.preventDefault(), onDrop:e=>{e.preventDefault();if(running){alert('Stop the current upscale to change settings.');return;}this.load(e.dataTransfer.files[0]);},
+      clear:()=>{if(running){alert('Stop the current upscale to change settings.');return;}clearInterval(this.t);this._jobId=null;try{if(this._jobEs){this._jobEs.close();this._jobEs=null;}}catch(e){}if(window.UpscaleBackend&&window.UpscaleBackend.clearWorkspace)window.UpscaleBackend.clearWorkspace(this);this.setState({file:null,url:null,resultUrl:null,displayUrl:null,urlAfter:null,jobId:null,w:0,h:0,status:'idle',pct:0,zoom:1,px:0,py:0,stage:''});},
+      cancel:()=>{if(window.UpscaleBackend)window.UpscaleBackend.cancel(this);},
+      afterStyle:layA+'image-rendering:auto', beforeStyle:layB+'image-rendering:pixelated', split:s.split, clipRight:100-s.split,
+      cursor:done?(s.tool==='pan'||false?'grab':'ew-resize'):'default',
+      onWheel:(e)=>{e.preventDefault();e.stopPropagation();const r=this.stageRef.current.getBoundingClientRect();const mx=e.clientX-r.left-r.width/2,my=e.clientY-r.top-r.height/2;const nz=Math.max(1,Math.min(32,(s.zoom||1)*(e.deltaY<0?1.25:0.8)));const k=nz/(s.zoom||1);this.setState({zoom:nz,px:nz===1?0:mx-(mx-(s.px||0))*k,py:nz===1?0:my-(my-(s.py||0))*k});},
+      down:e=>{if(running)return;if(e.shiftKey||e.button===1){e.currentTarget.setPointerCapture(e.pointerId);this.drag='pan';this.last=[e.clientX,e.clientY];return;}if(!done)return;e.currentTarget.setPointerCapture(e.pointerId);this.drag='split';this.setSplit(e);},
+      move:e=>{if(this.drag==='pan'){const dx=e.clientX-this.last[0],dy=e.clientY-this.last[1];this.last=[e.clientX,e.clientY];this.setState(st=>({px:(st.px||0)+dx,py:(st.py||0)+dy}));}else if(this.drag==='split')this.setSplit(e);},
+      up:()=>{this.drag=false;},
+      hint:done?'Drag to compare. Scroll to zoom, Shift-drag to pan.':running?'':'Scroll to zoom, Shift-drag to pan.',
+      types:this.TYPES.map(o=>({title:o[1],note:o[2],pick:()=>{if(running){alert('Stop the current upscale to change settings.');return;}this.setState({type:o[0]});},style:'text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:2px;padding:12px;margin-bottom:-2px;font-family:inherit;color:var(--color-text);border:2px solid '+(s.type===o[0]?'var(--color-accent)':'var(--color-text)')+';background:'+(s.type===o[0]?'var(--color-accent-100)':'transparent')+';opacity:'+(running?.5:1)})),
+      sizes:[2,4,8].map(v=>({label:v+'×',pick:()=>{if(running){alert('Stop the current upscale to change settings.');return;}this.setState({scale:v});},style:'font-size:20px;padding:12px 0;justify-content:flex-start;padding-left:14px;'+(s.scale===v?'background:var(--color-text);color:var(--color-bg)':'')+';opacity:'+(running?.5:1)})),
+      outDims:s.w?ow.toLocaleString('en')+' × '+oh.toLocaleString('en'):'—',
+      outInfo:s.w?(mp<10?mp.toFixed(1):Math.round(mp))+' megapixels · about '+fb(ow*oh*1.5)+' · about '+fmtT(secs):'Choose a picture to see the result size.',
+      preview:s.preview, onPreview:e=>{if(running){alert('Stop the current upscale to change settings.');return;}this.setState({preview:e.target.checked,status:'idle'});},
+      goOpacity:s.file&&!running?1:.45, goLabel:running?'Working… '+s.pct+'%':done?'Do it again':s.preview?'Preview small part':'Upscale',
+      run:this.run, download:()=>{const a=document.createElement('a');a.href=s.resultUrl||s.url;a.download=s.name.replace(/\.[^.]+$/,'')+'_'+s.scale+'x.'+(big?'tif':'png');a.click();},
+      goAdvanced:(e)=>{if(window.UpscaleBackend){window.UpscaleBackend.stashSession(this,'advanced');window.UpscaleBackend.rememberView('advanced');}else{try{localStorage.setItem('upscale.view','advanced');document.cookie='upscale_view=advanced;path=/;max-age=31536000;SameSite=Lax';}catch(err){}}},
+      auto:t[3]+', '+(big?'TIFF':'PNG')+', '+(s.deviceLabel||'best available device')+(s.suggestReason?' · '+s.suggestReason:'')+(s.backend==='onnx'&&s.onnxHint?' · '+s.onnxHint:'')
+    };
+  }
+}
+</script>
+
+<script src="/ui/bridge/core.js"></script>
+<script src="/ui/bridge/session.js"></script>
+<script src="/ui/bridge/jobs.js"></script>
+<script src="/ui/bridge/compare.js"></script>
+<script src="/ui/bridge/estimate.js"></script>
+<script src="/ui/backend-bridge.js?v=view1"></script>
+<script>if(window.UpscaleBackend)window.UpscaleBackend.rememberView('simple');</script>
+
+</body>
+</html>
