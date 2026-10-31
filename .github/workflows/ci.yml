@@ -23,7 +23,7 @@ jobs:
       - name: Mypy (schema + job_prep)
         run: mypy --follow-imports=silent upscaler/schema.py upscaler/job_prep.py
       - name: CLI help
-        run: upscale --help && upscale models
+        run: upscale --help && upscale models list
       - name: Pytest
         run: pytest
       - name: CPU smoke
