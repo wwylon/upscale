@@ -1,7 +1,7 @@
 {
   "test-custom-model": {
     "url": "",
-    "path": "C:\\Users\\wwylo\\AppData\\Local\\Temp\\pytest-of-wwylo\\pytest-3931\\test_api_models_add0\\custom.safetensors",
+    "path": "C:\\Users\\wwylo\\AppData\\Local\\Temp\\pytest-of-wwylo\\pytest-3932\\test_api_models_add0\\custom.safetensors",
     "scale": 4,
     "sha256": null,
     "description": "External model test-custom-model"

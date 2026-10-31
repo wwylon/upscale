@@ -1,9 +1,11 @@
+# GitHub Actions CI disabled — do not use automatic Actions minutes.
+# Local / publish verify is the gate (publish.manifest.yaml verify + local pytest).
+# Manual workflow_dispatch kept only if someone explicitly wants to resume later.
+
 name: ci
 
 on:
-  push:
-    branches: [main, master]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   test:
