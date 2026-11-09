@@ -1,0 +1,20 @@
+{
+  "_note": "Image-upscaling terms for llm-localize (pl).",
+  "doNotTranslate": [],
+  "terms": {
+    "upscale": {
+      "pl_forms": [
+        "powiększanie",
+        "powiększenie",
+        "powiększ"
+      ],
+      "pl_forbidden": [
+        "ulepsz",
+        "wzmacnianie",
+        "wzmocnij",
+        "obuduj"
+      ],
+      "note": "make an image larger (super-resolution); the action verb is 'powiększ'; 'Upscale' alone is the product name"
+    }
+  }
+}

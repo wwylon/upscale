@@ -14,12 +14,12 @@ android/
   app/src/main/java/com/upscale/app/MainActivity.kt
   assets/help/README.md          # bundled help topic ids
 docs/android.md
-scripts/export_onnx_stub.py
+scripts/export_onnx.py
 android/export_ncnn.md
 ```
 
 ## Next steps
 
 - Implement `MainActivity` WebView or Compose UI calling remote API.
-- Replace `export_onnx_stub.py` with real spandrel → ONNX export per model.
+- Export weights with `py -3 scripts/export_onnx.py <model>` (see `scripts/export_onnx.py`).
 - Add Gradle wrapper and NCNN `.so` per ABI.

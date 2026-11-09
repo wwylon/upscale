@@ -1,9 +1,11 @@
 /**
  * Bridges the design-doc UI (DCLogic) to the FastAPI job API.
- * Loaded after the design page; call sites invoke window.UpscaleBackend.*.
+ * Load after ui/bridge/core.js + session.js (+ estimate/compare/jobs stubs).
  */
 (function () {
-  const API = "";
+  const B = (window.__UpscaleBridge = window.__UpscaleBridge || {});
+  const API = B.API != null ? B.API : "";
+  B.API = API;
 
   /** Design sliders are often 0–100; API expects 0–1. */
   function _unit(v, fallback) {
@@ -13,24 +15,104 @@
     return n > 1 ? n / 100 : n;
   }
 
+  // Server error details (upscaler/api, listed by `llm-localize server-copy`) -> catalogue keys.
+  // Unknown text is shown as the server sent it.
+  const SERVER_TEXT = {
+    "No completed results to zip": () => i18n.t("server.compare.nothing_to_zip"),
+    "Select at least one model, classical algorithm, or filter": () => i18n.t("server.compare.pick_one"),
+    "Compare run not found": () => i18n.t("server.compare.run_missing"),
+    "Compare result not found": () => i18n.t("server.compare.result_missing"),
+    "Specify both width and height, or neither.": () => i18n.t("server.job.size_pair"),
+    "Output dimensions exceed the pixel budget.": () => i18n.t("server.job.too_many_pixels"),
+    "Scale exceeds the allowed maximum (64).": () => i18n.t("server.job.scale_max"),
+    "Vector images are not supported. Rasterize to PNG, TIFF, or another supported bitmap format first.": () => i18n.t("server.job.vector"),
+    "Could not read uploaded image": () => i18n.t("server.job.unreadable_upload"),
+    "Job not found": () => i18n.t("server.job.missing"),
+    "No strip checkpoint to resume": () => i18n.t("server.job.no_checkpoint"),
+    "Input file missing for this job": () => i18n.t("server.job.input_missing"),
+    "Input image is corrupt or unreadable; checkpoint cleared. Start a new upscale instead.": () => i18n.t("server.job.input_corrupt"),
+    "Job is already active": () => i18n.t("server.job.already_active"),
+    "Result not ready": () => i18n.t("server.job.result_not_ready"),
+    "Input not found": () => i18n.t("server.job.input_not_found"),
+    "Preview not found": () => i18n.t("server.job.preview_missing"),
+    "Display preview not ready": () => i18n.t("server.job.preview_not_ready"),
+    "Pass preview not found": () => i18n.t("server.job.pass_preview_missing"),
+  };
+  const SERVER_PATTERNS = [
+    [/^Upload exceeds limit of (\d+) bytes$/, (m) => i18n.t("server.upload.too_big", { bytes: m[1] })],
+    [/^Job queue full \(max (\d+)\)$/, (m) => i18n.t("server.job.queue_full", { max: m[1] })],
+    [/^Cannot pause job in state (\w+)$/, (m) => i18n.t("server.job.cannot_pause", { state: m[1] })],
+    [/^Cannot resume job in state (\w+)$/, (m) => i18n.t("server.job.cannot_resume", { state: m[1] })],
+    [/^Cannot resume-checkpoint from state (\w+)$/, (m) => i18n.t("server.job.cannot_resume_checkpoint", { state: m[1] })],
+    [/^Refusing to shadow built-in model (.+)$/, (m) => i18n.t("server.model.shadows_builtin", { name: m[1] })],
+    [/^Unsupported weights extension: (.+)$/, (m) => i18n.t("server.model.bad_extension", { ext: m[1] })],
+    [/^Unknown model: (.+)$/, (m) => i18n.t("server.model.unknown", { name: m[1] })],
+  ];
+  async function serverError(res) {
+    let text = await res.text();
+    try {
+      const j = JSON.parse(text);
+      if (j && typeof j.detail === "string") text = j.detail;
+    } catch (_) { /* plain text body */ }
+    if (Object.hasOwn(SERVER_TEXT, text)) return new Error(SERVER_TEXT[text]());
+    for (const [rx, fmt] of SERVER_PATTERNS) {
+      const m = rx.exec(text);
+      if (m) return new Error(fmt(m));
+    }
+    return new Error(text || String(res.status));
+  }
+
   async function postJob(file, settings) {
     const fd = new FormData();
     fd.append("file", file, file.name || "image.png");
     fd.append("settings", JSON.stringify(settings));
     const res = await fetch(API + "/api/jobs", { method: "POST", body: fd });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) throw await serverError(res);
     return res.json();
   }
 
-  function listenEvents(jobId, onEvent) {
+  /**
+   * onError(forced) should return true to tear the stream down and settle.
+   * Return false on a transient error so EventSource can reconnect.
+   * closeEs() calls onError(true) so a waiting runOne/compare promise cannot hang.
+   */
+  function listenEvents(jobId, onEvent, onError) {
     const es = new EventSource(API + "/api/jobs/" + jobId + "/events");
+    es._onError = typeof onError === "function" ? onError : null;
     es.onmessage = (ev) => {
       try {
         onEvent(JSON.parse(ev.data));
       } catch (_) {}
     };
-    es.onerror = () => es.close();
+    es.onerror = () => {
+      if (typeof es._onError !== "function") return;
+      let settle = false;
+      try {
+        settle = es._onError(false) === true;
+      } catch (_) {
+        settle = true;
+      }
+      if (!settle) return;
+      es._onError = null;
+      try {
+        es.close();
+      } catch (_) {}
+    };
     return es;
+  }
+
+  function closeEs(es) {
+    if (!es) return;
+    const hook = es._onError;
+    es._onError = null;
+    try {
+      es.close();
+    } catch (_) {}
+    if (typeof hook === "function") {
+      try {
+        hook(true);
+      } catch (_) {}
+    }
   }
 
   function trackEs(comp, es) {
@@ -40,21 +122,30 @@
     return es;
   }
 
+  function closeExtraEs(comp) {
+    if (!comp) return;
+    const extras = comp._extraEs || [];
+    comp._extraEs = [];
+    for (const es of extras) closeEs(es);
+  }
+
   function closeAllEs(comp) {
     if (!comp) return;
     if (comp._jobEs) {
-      try {
-        comp._jobEs.close();
-      } catch (_) {}
+      const es = comp._jobEs;
       comp._jobEs = null;
+      closeEs(es);
     }
-    const extras = comp._extraEs || [];
-    comp._extraEs = [];
-    for (const es of extras) {
-      try {
-        es.close();
-      } catch (_) {}
-    }
+    closeExtraEs(comp);
+  }
+
+  /** True when this listener must not write results (cleared, replaced, or cancelled). */
+  function runResultStale(comp, id, gen) {
+    if (!comp) return true;
+    if (gen != null && comp._runGen !== gen) return true;
+    if (comp._jobId !== id) return true;
+    if (comp._cancelGen === gen) return true;
+    return false;
   }
 
   function revokeUrl(u) {
@@ -183,7 +274,7 @@
     list
       .filter((m) => m.status === "failed")
       .forEach((m) => {
-        failed[m.name] = "failed to load";
+        failed[m.name] = i18n.t("models.failed_to_load");
       });
     window.__UPSCALE_DOWNLOADED__ = installed;
     window.__UPSCALE_MODEL_ERR__ = failed;
@@ -217,10 +308,10 @@
             next.push([
               m.name,
               m.description || "",
-              m.tags && m.tags[0] ? m.tags[0] : "Custom",
+              m.tags && m.tags[0] ? m.tags[0] : i18n.t("models.kind.custom"),
               m.scale || 4,
               m.size_bytes ? Math.max(1, Math.round(m.size_bytes / 1e6)) : 0,
-              m.source === "built-in" ? "Built-in" : "External",
+              m.source === "built-in" ? i18n.t("models.source.builtin") : i18n.t("models.source.external"),
               m.status === "installed" ? "ok" : m.status === "failed" ? "err" : "dl",
             ]);
           }
@@ -274,7 +365,7 @@
       } catch (_) {}
       const label =
         (sys.gpu_name || sys.device || "CPU") +
-        (sys.vram_free_mb != null ? " · " + Math.round(sys.vram_free_mb) + " MB free VRAM" : "");
+        (sys.vram_free_mb != null ? " · " + i18n.t("sys.vram_free", { mb: Math.round(sys.vram_free_mb) }) : "");
       const patch = { deviceLabel: label };
       if (algorithms && algorithms.length) patch.apiAlgorithms = algorithms;
       if (presets) patch.apiPresets = presets;
@@ -285,8 +376,7 @@
         );
         if (missing.length) {
           patch.onnxHint =
-            "ONNX models missing — export with scripts/export_onnx.py or place .onnx under " +
-            (sys.models_dir || "models/");
+            i18n.t("sys.onnx_missing", { dir: sys.models_dir || "models/" });
         }
       }
       const roots = document.querySelectorAll("x-dc");
@@ -311,7 +401,7 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) throw await serverError(res);
     const out = await res.json();
     await hydrateSystem(null);
     return out;
@@ -324,7 +414,7 @@
     if (scale != null) fd.append("scale", String(scale));
     if (description) fd.append("description", description);
     const res = await fetch(API + "/api/models/upload", { method: "POST", body: fd });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) throw await serverError(res);
     const out = await res.json();
     await hydrateSystem(null);
     return out;
@@ -485,8 +575,9 @@
         hasAlpha: !!f.hasAlpha,
       }));
       if (s.hasAlpha != null) out.hasAlpha = !!s.hasAlpha;
-    } else {
+    } else if (!s.file && !s.jobId) {
       // Cleared workspace — do not keep a lone global jobId for ghost restore.
+      // A simple-view image has state.file / state.jobId and an empty files list.
       delete out.jobId;
       out.status = "idle";
     }
@@ -903,7 +994,7 @@
     const res = await fetch(API + "/api/models/" + encodeURIComponent(name) + "/download", {
       method: "POST",
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) throw await serverError(res);
     const body = await res.json();
     await hydrateSystem(null);
     return body;
@@ -911,25 +1002,21 @@
 
   function stageMessage(ev) {
     const t = ev.type || "progress";
-    if (t === "loading_model") return "Loading model…";
-    if (t === "pre_filters") return "Applying filters…";
-    if (t === "filters") return "Applying filters…";
-    if (t === "writing") return "Writing output…";
-    if (t === "paused") return "Paused";
-    if (t === "downloading") return "Downloading model…";
+    if (t === "loading_model") return i18n.t("stage.loading_model");
+    if (t === "pre_filters") return i18n.t("stage.applying_filters");
+    if (t === "filters") return i18n.t("stage.applying_filters");
+    if (t === "writing") return i18n.t("stage.writing");
+    if (t === "paused") return i18n.t("stage.paused");
+    if (t === "downloading") return i18n.t("stage.downloading");
     if (t === "tile" && ev.pass != null && ev.tile != null) {
-      return (
-        "Pass " +
-        ev.pass +
-        (ev.passes != null ? "/" + ev.passes : "") +
-        " · tile " +
-        ev.tile +
-        (ev.tiles != null ? "/" + ev.tiles : "")
-      );
+      return i18n.t("stage.pass_tile", {
+        pass: ev.pass + (ev.passes != null ? "/" + ev.passes : ""),
+        tile: ev.tile + (ev.tiles != null ? "/" + ev.tiles : ""),
+      });
     }
     if (ev.message) return ev.message;
-    if (ev.pass) return "Pass " + ev.pass + (ev.passes != null ? "/" + ev.passes : "");
-    return "Working…";
+    if (ev.pass) return i18n.t("stage.pass", { pass: ev.pass + (ev.passes != null ? "/" + ev.passes : "") });
+    return i18n.t("stage.working");
   }
 
   async function waitForJobImage(url, attempts, delayMs, prevBlob) {
@@ -959,24 +1046,55 @@
   }
 
   async function runOne(comp, file, settings) {
+    const gen = (comp._runGen = (comp._runGen || 0) + 1);
     closeAllEs(comp);
     revokeStateBlobs(comp, ["displayUrl", "urlAfter", "resultUrl"]);
-    comp.setState({ status: "running", paused: false, blocked: false, pct: 0, stage: "Starting…" });
+    comp.setState({ status: "running", paused: false, blocked: false, pct: 0, stage: i18n.t("stage.starting") });
     const { id } = await postJob(file, settings);
+    if (comp._runGen !== gen) {
+      const err = new Error("cancelled");
+      err.cancelled = true;
+      throw err;
+    }
     comp._jobId = id;
     return new Promise((resolve, reject) => {
-      comp._jobEs = listenEvents(id, (ev) => {
+      let settled = false;
+      const finish = (fn, val) => {
+        if (settled) return;
+        settled = true;
+        if (comp._jobEs) comp._jobEs._onError = null;
+        fn(val);
+      };
+      // forced===true means the stream was closed (new run / clear extras).
+      // Otherwise settle only after cancel or when this generation was replaced,
+      // so a transient EventSource error can reconnect instead of hanging.
+      const onStreamError = (forced) => {
+        const cancelThis = comp._cancelGen === gen;
+        const replaced = comp._runGen !== gen;
+        if (forced !== true && !cancelThis && !replaced) return false;
+        if (settled) return true;
+        const err = new Error("cancelled");
+        err.cancelled = true;
+        if (cancelThis && comp._runGen === gen && comp._jobId === id) {
+          comp.setState({ status: "idle", pct: 0, paused: false, stage: i18n.t("stage.cancelled") });
+        }
+        finish(reject, err);
+        return true;
+      };
+      comp._jobEs = listenEvents(
+        id,
+        (ev) => {
         const t = ev.type || "progress";
+        const stale = () => comp._runGen !== gen || comp._jobId !== id;
+        const quiet = () => stale() || comp._cancelGen === gen;
         if (t === "paused") {
+          if (quiet()) return;
           comp.setState({ paused: true, status: "running", stage: stageMessage(ev) });
           return;
         }
-        if (t === "resumed") {
-          comp.setState({ paused: false, status: "running", stage: stageMessage(ev) || "Resumed…" });
-          return;
-        }
-        if (t === "progress" && ev.message === "resumed") {
-          comp.setState({ paused: false, status: "running", stage: "Resumed…" });
+        if (t === "resumed" || (t === "progress" && ev.message === "resumed")) {
+          if (quiet()) return;
+          comp.setState({ paused: false, status: "running", stage: stageMessage(ev) || i18n.t("stage.resumed") });
           return;
         }
         if (
@@ -989,11 +1107,22 @@
           t === "writing" ||
           t === "queued"
         ) {
-          const pct = Math.floor((ev.pct != null ? ev.pct : 0) * 100);
+          if (quiet()) return;
           const msg = stageMessage(ev);
-          const patch = { pct, stage: msg, status: "running", paused: false };
-          if (t === "loading_model" && ev.pct == null) patch.pct = Math.max(comp.state.pct || 0, 2);
-          comp.setState(patch);
+          comp.setState((st) => {
+            let pct = Math.floor((ev.pct != null ? ev.pct : 0) * 100);
+            if (t === "loading_model" && ev.pct == null) pct = Math.max(st.pct || 0, 2);
+            const patch = { pct, stage: msg, status: "running" };
+            if (st.paused) patch.paused = true;
+            if (st.activeId && Array.isArray(st.files) && st.files.length) {
+              patch.files = st.files.map((x) =>
+                x.id === st.activeId && x.st !== "done" && x.st !== "error" && x.st !== "cancelled"
+                  ? { ...x, pct, st: "run" }
+                  : x
+              );
+            }
+            return patch;
+          });
           if (ev.artifact) {
             const url = API + "/api/jobs/" + id + "/passes/" + (ev.pass || 1);
             comp.setState((st) => ({
@@ -1001,14 +1130,28 @@
             }));
           }
         } else if (t === "done") {
-          comp._jobEs.close();
+          if (comp._jobEs) {
+            comp._jobEs._onError = null;
+            try { comp._jobEs.close(); } catch (_) {}
+          }
+          if (runResultStale(comp, id, gen)) {
+            if (comp._cancelGen === gen || comp._runGen !== gen) {
+              const err = new Error("cancelled");
+              err.cancelled = true;
+              finish(reject, err);
+            } else {
+              finish(resolve, null);
+            }
+            return;
+          }
           const resultUrl = API + "/api/jobs/" + id + "/result";
           const displayApi = API + "/api/jobs/" + id + "/display";
           // Show result URL immediately (quoted CSS); refine to blob when ready.
           comp.setState({
             status: "done",
             pct: 100,
-            stage: "Loading preview…",
+            paused: false,
+            stage: i18n.t("stage.loading_preview"),
             jobId: id,
             resultUrl,
             displayUrl: resultUrl,
@@ -1020,6 +1163,17 @@
           });
           waitForJobImage([displayApi, resultUrl])
             .then((displayUrl) => {
+              if (runResultStale(comp, id, gen)) {
+                revokeUrl(displayUrl);
+                if (comp._cancelGen === gen || comp._runGen !== gen) {
+                  const err = new Error("cancelled");
+                  err.cancelled = true;
+                  finish(reject, err);
+                } else {
+                  finish(resolve, null);
+                }
+                return;
+              }
               const patch = {
                 status: "done",
                 pct: 100,
@@ -1074,26 +1228,42 @@
                   typeof Notification !== "undefined" &&
                   Notification.permission === "granted"
                 ) {
-                  new Notification("Upscale finished", {
-                    body: comp.state.name || "Image ready",
+                  new Notification(i18n.t("notify.finished"), {
+                    body: comp.state.name || i18n.t("notify.image_ready"),
                   });
                 }
               } catch (_) {}
-              resolve(resultUrl);
+              finish(resolve, resultUrl);
             })
-            .catch((err) => reject(err));
+            .catch((err) => finish(reject, err));
         } else if (t === "cancelled") {
-          comp._jobEs.close();
+          if (comp._jobEs) {
+            comp._jobEs._onError = null;
+            try { comp._jobEs.close(); } catch (_) {}
+          }
           const err = new Error("cancelled");
           err.cancelled = true;
-          comp.setState({ status: "idle", pct: 0, paused: false, stage: "Cancelled" });
-          reject(err);
+          if (!stale()) {
+            comp.setState({ status: "idle", pct: 0, paused: false, stage: i18n.t("stage.cancelled") });
+          }
+          finish(reject, err);
         } else if (t === "error") {
-          comp._jobEs.close();
+          if (comp._jobEs) {
+            comp._jobEs._onError = null;
+            try { comp._jobEs.close(); } catch (_) {}
+          }
+          if (stale() || comp._cancelGen === gen) {
+            const err = new Error("cancelled");
+            err.cancelled = true;
+            finish(reject, err);
+            return;
+          }
           comp.setState({ status: "idle", pct: 0, paused: false, stage: ev.message || t });
-          reject(new Error(ev.message || t));
+          finish(reject, new Error(ev.message || t));
         }
-      });
+      },
+        onStreamError
+      );
     });
   }
 
@@ -1103,6 +1273,7 @@
 
   window.UpscaleBackend = {
     async runJob(comp, opts) {
+      const epoch = comp ? (comp._uiEpoch = (comp._uiEpoch || 0) + 1) : 0;
       try {
         const force = !!(opts && opts.force);
         if (force && comp && typeof comp.setState === "function") {
@@ -1110,22 +1281,28 @@
         }
         const settings = settingsFromAdvanced(comp);
         await runOne(comp, comp.state.file, settings);
+        if (comp && comp._uiEpoch !== epoch) return;
         this.refreshInterrupted(comp);
       } catch (e) {
+        if (comp && comp._uiEpoch !== epoch) return;
         console.error(e);
-        if (!isCancelledError(e)) {
-          alert("Upscale failed: " + (e.message || e));
+        const cleared = !!(comp && comp._jobId == null && comp.state && !comp.state.file && comp.state.status !== "running");
+        if (!isCancelledError(e) && !cleared) {
+          alert(i18n.t("alert.upscale_failed", { err: e.message || e }));
         }
-        comp.setState({ status: "idle", paused: false, stage: isCancelledError(e) ? "Cancelled" : (comp.state.stage || "") });
+        if (!cleared) {
+          comp.setState({ status: "idle", paused: false, stage: isCancelledError(e) ? i18n.t("stage.cancelled") : (comp.state.stage || "") });
+        }
         this.refreshInterrupted(comp);
       }
     },
 
     /** Upscale only the current test crop with the selected model/settings. */
     async runCropJob(comp) {
+      const epoch = comp ? (comp._uiEpoch = (comp._uiEpoch || 0) + 1) : 0;
       try {
         if (!comp.state.file) {
-          alert("Choose an image first.");
+          alert(i18n.t("alert.choose_image"));
           return;
         }
         const settings = settingsFromAdvanced(comp);
@@ -1143,17 +1320,22 @@
           h: Math.min(size, s.h - y),
         };
         await runOne(comp, comp.state.file, settings);
+        if (comp._uiEpoch !== epoch) return;
         this.refreshInterrupted(comp);
       } catch (e) {
+        if (comp && comp._uiEpoch !== epoch) return;
         console.error(e);
-        if (!isCancelledError(e)) {
-          alert("Crop upscale failed: " + (e.message || e));
+        const cleared = !!(comp._jobId == null && comp.state && !comp.state.file && comp.state.status !== "running");
+        if (!isCancelledError(e) && !cleared) {
+          alert(i18n.t("alert.crop_failed", { err: e.message || e }));
         }
-        comp.setState({
-          status: "idle",
-          paused: false,
-          stage: isCancelledError(e) ? "Cancelled" : comp.state.stage || "",
-        });
+        if (!cleared) {
+          comp.setState({
+            status: "idle",
+            paused: false,
+            stage: isCancelledError(e) ? i18n.t("stage.cancelled") : comp.state.stage || "",
+          });
+        }
       }
     },
 
@@ -1161,6 +1343,7 @@
       const files = (comp.state.files || []).slice();
       comp._batchJobIds = [];
       comp._batchAbort = false;
+      comp._cancelRequested = false;
       comp.setState({ status: "running", paused: false, pct: 0 });
       let aborted = false;
       for (let i = 0; i < files.length; i++) {
@@ -1171,7 +1354,7 @@
         const it = files[i];
         const itemId = it.id;
         comp.setState((st) => ({
-          stage: "Image " + (i + 1) + " of " + files.length + " · " + it.name,
+          stage: i18n.t("stage.batch_item", { n: i + 1, total: files.length, name: it.name }),
           activeId: itemId,
           file: it.file,
           url: it.url,
@@ -1241,16 +1424,19 @@
         }
       }
       if (aborted) {
-        comp.setState({
-          status: "idle",
-          pct: 0,
-          paused: false,
-          stage: "Cancelled",
-          resultUrl: null,
-          displayUrl: null,
-          urlAfter: null,
-          jobId: null,
-        });
+        const cleared = comp.state && !comp.state.file && !(comp.state.files || []).length;
+        if (!cleared) {
+          comp.setState({
+            status: "idle",
+            pct: 0,
+            paused: false,
+            stage: i18n.t("stage.cancelled"),
+            resultUrl: null,
+            displayUrl: null,
+            urlAfter: null,
+            jobId: null,
+          });
+        }
         comp._jobId = null;
         await persistWorkspace(comp);
         this.refreshInterrupted(comp);
@@ -1301,13 +1487,15 @@
     },
 
     async runSimple(comp) {
+      const epoch = comp ? (comp._uiEpoch = (comp._uiEpoch || 0) + 1) : 0;
       try {
         const file = comp.state.file;
-        if (!file) throw new Error("No image loaded");
+        if (!file) throw new Error(i18n.t("alert.no_image"));
         const settings = settingsFromSimple(comp);
         const url = await runOne(comp, file, settings);
+        if (comp._uiEpoch !== epoch) return;
         // Do not overwrite source url — before/after slider needs both
-        if (url) {
+        if (url && comp._jobId) {
           const displayUrl = comp.state.displayUrl || url;
           comp.setState({
             status: "done",
@@ -1319,13 +1507,17 @@
           });
         }
       } catch (e) {
-        if (!isCancelledError(e)) {
-          alert("Upscale failed: " + (e.message || e));
+        if (comp && comp._uiEpoch !== epoch) return;
+        const cleared = !!(comp._jobId == null && comp.state && !comp.state.file && comp.state.status !== "running");
+        if (!isCancelledError(e) && !cleared) {
+          alert(i18n.t("alert.upscale_failed", { err: e.message || e }));
         }
-        comp.setState({
-          status: "idle",
-          stage: isCancelledError(e) ? "Cancelled" : "",
-        });
+        if (!cleared) {
+          comp.setState({
+            status: "idle",
+            stage: isCancelledError(e) ? i18n.t("stage.cancelled") : "",
+          });
+        }
       }
     },
 
@@ -1334,7 +1526,7 @@
         await this.compareViaApi(comp);
       } catch (e) {
         if (isCancelledError(e) || (e && e.name === "AbortError") || (comp && comp._batchAbort)) {
-          comp.setState({ status: "idle", paused: false, stage: "Cancelled" });
+          comp.setState({ status: "idle", paused: false, stage: i18n.t("stage.cancelled") });
           return;
         }
         console.warn("compare API failed, falling back to sequential jobs", e);
@@ -1361,7 +1553,7 @@
           })),
           ...sel.algorithms.map((n) => ({
             id: "algo:" + n,
-            name: "Classical · " + n,
+            name: i18n.t("cmp.variant_classical", { name: n }),
             kind: "algorithm",
             settings: { model: sel.base_model, algorithm: n, filters: {} },
           })),
@@ -1389,7 +1581,7 @@
             }
             return {
               id: "filt:" + n,
-              name: n === "none" ? "No filters" : "Filter · " + n,
+              name: n === "none" ? i18n.t("cmp.variant_no_filters") : i18n.t("cmp.variant_filter", { name: n }),
               kind: "filter",
               settings: {
                 model: sel.base_model,
@@ -1432,21 +1624,38 @@
             const { id } = await postJob(s.file, settings);
             comp._jobId = id;
             await new Promise((resolve, reject) => {
+              let settled = false;
+              const done = (fn, val) => {
+                if (settled) return;
+                settled = true;
+                fn(val);
+              };
               const es = trackEs(
                 comp,
-                listenEvents(id, (ev) => {
-                  if (ev.type === "done") {
-                    es.close();
-                    resolve();
-                  } else if (ev.type === "error" || ev.type === "cancelled") {
-                    es.close();
-                    reject(
-                      Object.assign(new Error(ev.message || ev.type), {
-                        cancelled: ev.type === "cancelled",
-                      })
-                    );
+                listenEvents(
+                  id,
+                  (ev) => {
+                    if (ev.type === "done") {
+                      es._onError = null;
+                      try { es.close(); } catch (_) {}
+                      done(resolve);
+                    } else if (ev.type === "error" || ev.type === "cancelled") {
+                      es._onError = null;
+                      try { es.close(); } catch (_) {}
+                      done(
+                        reject,
+                        Object.assign(new Error(ev.message || ev.type), {
+                          cancelled: ev.type === "cancelled",
+                        })
+                      );
+                    }
+                  },
+                  (forced) => {
+                    if (forced !== true && !(comp._batchAbort || comp._cancelRequested)) return false;
+                    done(reject, Object.assign(new Error("cancelled"), { cancelled: true }));
+                    return true;
                   }
-                })
+                )
               );
             });
             if (comp._batchAbort) break;
@@ -1469,7 +1678,7 @@
         comp._jobId = null;
         comp.setState({
           status: "idle",
-          stage: comp._batchAbort ? "Cancelled" : "",
+          stage: comp._batchAbort ? i18n.t("stage.cancelled") : "",
         });
       }
     },
@@ -1477,7 +1686,7 @@
     async downloadBatchZip(comp) {
       const ids = (comp._batchJobIds || []).filter(Boolean);
       if (!ids.length) {
-        alert("No completed batch jobs to zip yet.");
+        alert(i18n.t("alert.no_batch_zip"));
         return;
       }
       await this.zipJobs(ids);
@@ -1486,7 +1695,9 @@
     async refreshInterrupted(comp) {
       try {
         const data = await (await fetch(API + "/api/jobs/interrupted")).json();
-        const jobs = data.jobs || [];
+        const jobs = (data.jobs || []).filter(
+          (j) => j && j.id && j.checkpoint && Number(j.checkpoint.flush_row) > 0
+        );
         const first = jobs[0] || null;
         if (comp && typeof comp.setState === "function") {
           comp.setState({ interrupted: first, interruptedAll: jobs });
@@ -1494,18 +1705,24 @@
         return jobs;
       } catch (e) {
         console.warn("interrupted poll failed", e);
+        if (comp && typeof comp.setState === "function") {
+          comp.setState({ interrupted: null, interruptedAll: [] });
+        }
         return [];
       }
     },
 
     async resumeInterrupted(comp) {
       const interrupted = (comp.state && comp.state.interrupted) || null;
-      const id = (interrupted && interrupted.id) || comp._jobId;
-      if (!id) {
-        alert("No interrupted job to resume.");
+      const ck = (interrupted && interrupted.checkpoint) || null;
+      const id = interrupted && interrupted.id;
+      if (!id || !ck || !(Number(ck.flush_row) > 0)) {
+        if (comp && typeof comp.setState === "function") {
+          comp.setState({ interrupted: null, interruptedAll: [] });
+        }
+        alert(i18n.t("alert.no_interrupted"));
         return;
       }
-      const ck = (interrupted && interrupted.checkpoint) || {};
       const passIdx = ck.pass_index;
       const passLabel =
         passIdx == null || passIdx === "" ? "?" : String(passIdx);
@@ -1521,7 +1738,7 @@
         status: "running",
         paused: false,
         pct: pct0,
-        stage: "Resuming from checkpoint · pass " + passLabel + "…",
+        stage: i18n.t("stage.resuming_checkpoint", { pass: passLabel }),
         interrupted: null,
         jobId: id,
         name: (interrupted && interrupted.input) || (comp.state && comp.state.name) || "image",
@@ -1556,33 +1773,79 @@
         if (settings.tile != null) patch.tile = settings.tile;
         if (settings.overlap != null) patch.overlap = settings.overlap;
       }
+      comp._batchAbort = false;
+      comp._cancelRequested = false;
+      comp._cancelGen = null;
       try {
         const res = await fetch(API + "/api/jobs/" + id + "/resume-checkpoint", {
           method: "POST",
         });
-        if (!res.ok) throw new Error(await res.text());
+        if (!res.ok) throw await serverError(res);
         comp._jobId = id;
-        comp._jobEs && comp._jobEs.close();
+        const gen = (comp._runGen = (comp._runGen || 0) + 1);
+        if (comp._jobEs) {
+          const old = comp._jobEs;
+          comp._jobEs = null;
+          closeEs(old);
+        }
         comp.setState(patch);
         return await new Promise((resolve, reject) => {
+          let settled = false;
+          const finish = (fn, val) => {
+            if (settled) return;
+            settled = true;
+            if (comp._jobEs) comp._jobEs._onError = null;
+            fn(val);
+          };
+          const onStreamError = (forced) => {
+            const cancelThis = comp._cancelGen === gen || comp._cancelRequested || comp._batchAbort;
+            const replaced = comp._runGen !== gen || comp._jobId !== id;
+            if (forced !== true && !cancelThis && !replaced) return false;
+            if (settled) return true;
+            const err = new Error("cancelled");
+            err.cancelled = true;
+            if (cancelThis && !replaced) {
+              comp.setState({ status: "idle", stage: i18n.t("stage.cancelled"), paused: false });
+            }
+            finish(reject, err);
+            return true;
+          };
           comp._jobEs = listenEvents(id, (ev) => {
             const t = ev.type || "progress";
+            const stale = comp._runGen !== gen || comp._jobId !== id;
             if (t === "done") {
-              comp._jobEs.close();
+              if (comp._jobEs) {
+                comp._jobEs._onError = null;
+                try { comp._jobEs.close(); } catch (_) {}
+              }
+              if (stale || comp._cancelGen === gen) {
+                const err = new Error("cancelled");
+                err.cancelled = true;
+                finish(reject, err);
+                return;
+              }
               const resultUrl = API + "/api/jobs/" + id + "/result";
               const displayUrl = API + "/api/jobs/" + id + "/display";
               const hist = withHistory(comp.state && comp.state.history, {
                 name: (comp.state && comp.state.name) || "image",
-                info: "Resumed job",
-                time: "resume",
+                info: i18n.t("history.resumed_job"),
+                time: i18n.t("history.resume_tag"),
                 jobId: id,
                 resultUrl,
                 displayUrl,
               });
               waitForJobImage(displayUrl, 8, 100).then((url) => {
+                if (comp._runGen !== gen || comp._jobId !== id || comp._cancelGen === gen) {
+                  revokeUrl(url);
+                  const err = new Error("cancelled");
+                  err.cancelled = true;
+                  finish(reject, err);
+                  return;
+                }
                 comp.setState({
                   status: "done",
                   pct: 100,
+                  paused: false,
                   resultUrl,
                   displayUrl: url,
                   urlAfter: url,
@@ -1592,26 +1855,41 @@
                 });
                 persistWorkspace(comp);
                 this.refreshInterrupted(comp);
-                resolve(resultUrl);
+                finish(resolve, resultUrl);
               });
             } else if (t === "error" || t === "cancelled") {
-              comp._jobEs.close();
-              comp.setState({ status: "idle", stage: ev.message || t, paused: false });
+              if (comp._jobEs) {
+                comp._jobEs._onError = null;
+                try { comp._jobEs.close(); } catch (_) {}
+              }
+              if (!stale) {
+                comp.setState({ status: "idle", stage: ev.message || t, paused: false });
+              }
               this.refreshInterrupted(comp);
-              reject(new Error(ev.message || t));
+              const err = new Error(ev.message || t);
+              if (t === "cancelled") err.cancelled = true;
+              finish(reject, err);
             } else if (ev.pct != null || ev.message) {
-              comp.setState({
+              if (stale) return;
+              const patchEv = {
                 pct: ev.pct != null ? Math.floor(ev.pct * 100) : pct0,
-                stage: ev.message || "Resuming…",
+                stage: ev.message || i18n.t("stage.resuming"),
                 status: "running",
-              });
+              };
+              if (t !== "resumed" && comp.state && comp.state.paused) patchEv.paused = true;
+              if (t === "resumed") patchEv.paused = false;
+              comp.setState(patchEv);
             }
-          });
+          }, onStreamError);
         });
       } catch (e) {
         console.error(e);
-        alert("Resume failed: " + (e.message || e));
-        comp.setState({ status: "idle", stage: "" });
+        if (!isCancelledError(e)) {
+          alert(i18n.t("alert.resume_failed", { err: e.message || e }));
+          comp.setState({ status: "idle", stage: "" });
+        } else if (comp.state && comp.state.status === "running") {
+          comp.setState({ status: "idle", stage: i18n.t("stage.cancelled"), paused: false });
+        }
         this.refreshInterrupted(comp);
       }
     },
@@ -1665,7 +1943,7 @@
           })
         );
         const jobRes = await fetch(API + "/api/jobs", { method: "POST", body: f });
-        if (!jobRes.ok) throw new Error(await jobRes.text());
+        if (!jobRes.ok) throw await serverError(jobRes);
         const job = await jobRes.json();
         fetch(API + "/api/jobs/" + job.id + "/cancel", { method: "POST" }).catch(
           () => {}
@@ -1699,7 +1977,7 @@
       }
       if (!path) {
         throw new Error(
-          "Load an image before benchmarking — needs a file under the jobs folder"
+          i18n.t("adv.bench_needs_image")
         );
       }
       const res = await fetch(API + "/api/benchmark", {
@@ -1713,7 +1991,7 @@
           scale: 2,
         }),
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) throw await serverError(res);
       return res.json();
     },
 
@@ -1749,8 +2027,14 @@
 
     cancel(comp) {
       // Stop batch from starting the next image after this job dies.
-      if (comp) comp._batchAbort = true;
-      closeAllEs(comp);
+      if (comp) {
+        comp._batchAbort = true;
+        comp._cancelRequested = true;
+        if (comp._runGen != null) comp._cancelGen = comp._runGen;
+      }
+      // Keep the job EventSource open until runOne sees cancelled/done/error
+      // (or onerror after cancel). Only drop compare/extra streams.
+      closeExtraEs(comp);
       const resetBatchRows = () => {
         if (!comp || !comp.setState) return;
         comp.setState((st) => ({
@@ -1776,7 +2060,7 @@
             status: "idle",
             pct: 0,
             paused: false,
-            stage: "Cancelled",
+            stage: i18n.t("stage.cancelled"),
           });
         }
         return;
@@ -1792,7 +2076,7 @@
             status: "idle",
             pct: 0,
             paused: false,
-            stage: "Cancelled",
+            stage: i18n.t("stage.cancelled"),
           });
         }
         return;
@@ -1802,7 +2086,7 @@
       try {
         localStorage.setItem("upscale.lastJobId", id);
       } catch (_) {}
-      comp.setState({ stage: "Cancelling…", status: "running", paused: false });
+      comp.setState({ stage: i18n.t("stage.cancelling"), status: "running", paused: false });
       // Also clear pause so the worker can notice cancel while waiting.
       fetch(API + "/api/jobs/" + id + "/resume", { method: "POST" }).catch(() => {});
       fetch(API + "/api/jobs/" + id + "/cancel", { method: "POST" })
@@ -1815,7 +2099,7 @@
             status: "idle",
             pct: 0,
             paused: false,
-            stage: "Cancel failed — try again",
+            stage: i18n.t("stage.cancel_failed"),
           });
         });
       // Keep EventSource open until cancelled/done/error arrives (runOne handler).
@@ -1824,7 +2108,7 @@
       comp._cancelFallback = setTimeout(() => {
         if (comp.state && comp.state.status === "running" && comp._batchAbort) {
           comp.setState({
-            stage: "Cancelling… (finishing current tile)",
+            stage: i18n.t("stage.cancelling_tile"),
             paused: false,
           });
         }
@@ -1846,7 +2130,7 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) throw await serverError(res);
       return res.json();
     },
 
@@ -1855,7 +2139,7 @@
       const fd = new FormData();
       fd.append("file", file, file.name || "image.bin");
       const res = await fetch(API + "/api/decode-preview", { method: "POST", body: fd });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) throw await serverError(res);
       const blob = await res.blob();
       return {
         blob,
@@ -1883,7 +2167,7 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, kind: kind || "option" }),
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) throw await serverError(res);
       return res.json();
     },
 
@@ -1892,7 +2176,7 @@
       fd.append("file", file, file.name || "image.png");
       fd.append("fast", fast ? "true" : "false");
       const res = await fetch(API + "/api/suggest", { method: "POST", body: fd });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) throw await serverError(res);
       return res.json();
     },
 
@@ -1922,6 +2206,7 @@
           });
         } catch (e) {
           console.warn("estimate failed", e);
+          if (comp._estKey === key) comp._estKey = null;
         }
       }, 280);
     },
@@ -1939,7 +2224,7 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ job_ids: jobIds }),
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) throw await serverError(res);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -2006,12 +2291,12 @@
         ...sel.models.map((n) => ({ id: n, name: n, kind: "model" })),
         ...sel.algorithms.map((n) => ({
           id: "algo:" + n,
-          name: "Classical · " + n,
+          name: i18n.t("cmp.variant_classical", { name: n }),
           kind: "algorithm",
         })),
         ...(sel.filters || []).map((n) => ({
           id: "filt:" + n,
-          name: "Filter · " + n,
+          name: i18n.t("cmp.variant_filter", { name: n }),
           kind: "filter",
         })),
       ].map((x) => ({ ...x, done: false, secs: 0, url: null }));
@@ -2019,12 +2304,13 @@
       comp._compareAbort = ac;
       comp._compareId = null;
       comp._batchAbort = false;
+      comp._cancelRequested = false;
       comp.setState({
         cmp: placeholder,
         cpx: 0,
         cpy: 0,
         status: "running",
-        stage: "Comparing variants…",
+        stage: i18n.t("stage.comparing"),
         pct: 0,
         paused: false,
       });
@@ -2053,7 +2339,7 @@
         const pct = Math.max(0, Math.min(99, Math.round((done / total) * 100)));
         comp.setState((st) => ({
           cmp: (st.cmp || placeholder).map((c) => doneMap[c.id] || c),
-          stage: stMsg || "Comparing variants…",
+          stage: stMsg || i18n.t("stage.comparing"),
           pct,
         }));
       };
@@ -2063,7 +2349,7 @@
           body: fd,
           signal: ac.signal,
         });
-        if (!res.ok) throw new Error(await res.text());
+        if (!res.ok) throw await serverError(res);
         const started = await res.json();
         const runId = started.id;
         if (!runId) throw new Error("compare returned no id");
@@ -2102,7 +2388,7 @@
             mergePartial(runId, st.results, st.message, doneCount, total);
           else if (st.message || doneCount) {
             comp.setState({
-              stage: st.message || "Comparing variants…",
+              stage: st.message || i18n.t("stage.comparing"),
               pct: Math.max(
                 0,
                 Math.min(99, Math.round((doneCount / total) * 100))
@@ -2133,18 +2419,18 @@
             comp.setState({
               cmp: placeholder.map((c) => byId[c.id] || c),
               status: "idle",
-              stage: "Cancelled",
+              stage: i18n.t("stage.cancelled"),
             });
             throw Object.assign(new Error("cancelled"), { cancelled: true });
           }
           if (st.state === "error") {
-            throw new Error(st.error || "compare failed");
+            throw new Error(st.error || i18n.t("cmp.failed"));
           }
           await sleep(400);
         }
       } catch (e) {
         if (isCancelledError(e) || (e && e.name === "AbortError") || comp._batchAbort) {
-          comp.setState({ status: "idle", paused: false, stage: "Cancelled" });
+          comp.setState({ status: "idle", paused: false, stage: i18n.t("stage.cancelled") });
           throw Object.assign(e instanceof Error ? e : new Error("cancelled"), {
             cancelled: true,
           });
@@ -2174,11 +2460,11 @@
           (a.version || "") +
           "\n\n" +
           (a.description || "") +
-          "\n\nLicense: " +
+          "\n\n" + i18n.t("about.license") + " " +
           (a.license || "MIT") +
-          "\nModels folder: " +
+          "\n" + i18n.t("about.models_folder") + " " +
           (a.models_dir || "") +
-          "\nInstalled: " +
+          "\n" + i18n.t("about.installed") + " " +
           (m.installed_count || 0) +
           " (" +
           _fmtBytes(m.total_bytes) +
@@ -2186,7 +2472,7 @@
           (a.models_policy || "")
       );
     } catch (e) {
-      alert("Could not load About: " + e);
+      alert(i18n.t("about.load_failed", { err: e }));
     }
   }
 
@@ -2196,18 +2482,18 @@
       const text = L.text || "MIT";
       alert(text.length > 3500 ? text.slice(0, 3500) + "\n…" : text);
     } catch (e) {
-      alert("Could not load License: " + e);
+      alert(i18n.t("about.license_failed", { err: e }));
     }
   }
 
   async function checkUpdates() {
     try {
       const u = await (await fetch(API + "/api/updates")).json();
-      let msg = u.message || ("Current version: " + (u.current || "?"));
+      let msg = u.message || i18n.t("about.current_version", { version: u.current || "?" });
       if (u.update_available && u.url) msg += "\n\n" + u.url;
       alert(msg);
     } catch (e) {
-      alert("Update check failed: " + e);
+      alert(i18n.t("about.update_failed", { err: e }));
     }
   }
 
@@ -2246,5 +2532,19 @@
     document.addEventListener("DOMContentLoaded", boot);
   } else {
     boot();
+  }
+
+  // Publish key methods onto B for modular callers.
+  if (window.UpscaleBackend) {
+    B.maybeEstimate = window.UpscaleBackend.maybeEstimate;
+    B.fetchEstimate = window.UpscaleBackend.fetchEstimate;
+    B.invalidateEstimate = window.UpscaleBackend.invalidateEstimate;
+    B.compareViaApi = window.UpscaleBackend.compareViaApi;
+    B._compareSelection = window.UpscaleBackend._compareSelection;
+    B.cancel = window.UpscaleBackend.cancel;
+    B.runJob = window.UpscaleBackend.runJob;
+    B.runBatch = window.UpscaleBackend.runBatch;
+    B.persistWorkspace = window.UpscaleBackend.persistWorkspace || B.persistWorkspace;
+    B.hydrateSystem = window.UpscaleBackend.hydrateSystem || B.hydrateSystem;
   }
 })();

@@ -66,12 +66,12 @@ def any_pre_filters(settings: FilterSettings) -> bool:
 
 
 def any_post_filters(settings: FilterSettings) -> bool:
+    # face_restore is a stub until a restorer is wired — omit from the predicate.
     return (
         settings.edge > 0
         or settings.grain > 0
         or settings.color_contrast > 0
         or settings.halo_reduce > 0
-        or settings.face_restore > 0
     )
 
 
@@ -132,24 +132,49 @@ def _halo_reduce(img: np.ndarray, amount: float) -> np.ndarray:
     a = float(np.clip(amount, 0, 1))
     pil = Image.fromarray(img)
     soft = pil.filter(ImageFilter.MedianFilter(size=3))
-    soft_a = np.array(soft, dtype=np.float32)
-    src = img.astype(np.float32)
-    # Where |src - median| is large, blend toward median
-    delta = np.abs(src - soft_a)
-    strength = np.clip(delta / 40.0, 0.0, 1.0) * a * 0.75
-    out = src * (1.0 - strength) + soft_a * strength
-    return np.clip(out, 0, 255).astype(np.uint8)
+    soft_a = np.asarray(soft, dtype=np.float32)
+    src = np.asarray(img, dtype=np.float32)
+    # Fuse into soft_a: where |src - median| is large, blend toward median.
+    strength = np.clip(np.abs(src - soft_a) / 40.0, 0.0, 1.0) * a * 0.75
+    soft_a *= strength
+    soft_a += src * (1.0 - strength)
+    return np.clip(soft_a, 0, 255).astype(np.uint8)
 
 
 def wrap_seamless(img: np.ndarray, pad: int) -> np.ndarray:
     """Pad image with wraparound for seamless texture mode."""
     if pad <= 0:
         return img
+    if img.ndim == 2:
+        return np.pad(img, ((pad, pad), (pad, pad)), mode="wrap")
     return np.pad(img, ((pad, pad), (pad, pad), (0, 0)), mode="wrap")
 
 
-def unwrap_seamless(img: np.ndarray, pad: int, scale: int) -> np.ndarray:
+def unwrap_seamless(
+    img: np.ndarray,
+    pad: int,
+    scale: int | None = None,
+    *,
+    margins: tuple[int, int] | None = None,
+) -> np.ndarray:
+    """Crop wrap pad from an upscaled (or padded) image.
+
+    Prefer ``margins=(pad_y, pad_x)`` in output pixels. Integer ``scale`` is
+    kept for callers that still pass ``pad * factor``.
+    """
     if pad <= 0:
         return img
-    p = pad * scale
-    return img[p:-p, p:-p]
+    if margins is not None:
+        py, px = margins
+    elif scale is not None:
+        py = px = int(pad) * int(scale)
+    else:
+        raise TypeError("unwrap_seamless requires scale or margins")
+    if py <= 0 and px <= 0:
+        return img
+    h, w = img.shape[:2]
+    y0, y1 = py, h - py
+    x0, x1 = px, w - px
+    if y1 <= y0 or x1 <= x0:
+        return img
+    return img[y0:y1, x0:x1]

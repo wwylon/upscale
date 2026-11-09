@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import gc
+import importlib.util
 import math
 import tempfile
 import time
@@ -42,10 +43,40 @@ def compute_passes(scale: float, model_scale: int = 4) -> int:
     return floor_passes + 1
 
 
-def _clamp_overlap(overlap: int, tile: int) -> int:
-    from .job_prep import clamp_overlap
+def _is_memmap(x: np.ndarray) -> bool:
+    # Prefer isinstance when np.memmap is still a type (tests may monkeypatch it).
+    mm = getattr(np, "memmap", None)
+    if isinstance(mm, type):
+        try:
+            if isinstance(x, mm):
+                return True
+        except TypeError:
+            pass
+    return getattr(x, "filename", None) is not None or type(x).__name__ == "memmap"
 
-    return clamp_overlap(overlap, tile)
+
+def _materialize(arr: np.ndarray) -> np.ndarray:
+    if _is_memmap(arr):
+        return np.array(arr, copy=True)
+    return np.asarray(arr)
+
+
+def _torch_available() -> bool:
+    return importlib.util.find_spec("torch") is not None
+
+
+def _is_oom(exc: BaseException) -> bool:
+    if isinstance(exc, MemoryError):
+        return True
+    msg = str(exc).lower()
+    if "out of memory" in msg or "oom" in msg:
+        return True
+    if _torch_available():
+        import torch
+
+        if isinstance(exc, getattr(torch.cuda, "OutOfMemoryError", ())):
+            return True
+    return False
 
 
 def run(
@@ -80,27 +111,37 @@ def run(
     Callers that unwrap seamless / apply post-filters themselves should pass
     ``strength=1.0`` and blend in finalize instead.
     """
+    # Lazy import avoids config → pipeline → job_prep → config cycle.
+    from .job_prep import apply_strength, clamp_overlap
+
     H, W = img.shape[:2]
     tw = target_w if target_w is not None else round(W * scale)
     th = target_h if target_h is not None else round(H * scale)
-    overlap = _clamp_overlap(overlap, tile)
+    overlap = clamp_overlap(overlap, tile)
+    src_for_strength = strength_source if strength_source is not None else img
 
     if scale < 1.0:
         if show_progress:
             print(f"  Downscale {W}×{H} → {tw}×{th} (Lanczos)")
-        return lanczos_resize(img, tw, th)
+        out = lanczos_resize(img, tw, th)
+        return apply_strength(out, src_for_strength, tw, th, strength)
 
     if scale == 1.0:
         out = img.copy()
         if out.shape[1] != tw or out.shape[0] != th:
             out = lanczos_resize(out, tw, th)
-        return out
+        return apply_strength(out, src_for_strength, tw, th, strength)
 
     ms = model_scale if model_scale is not None else resolve_model_scale(descriptor)
     passes = compute_passes(scale, ms)
 
     if passes == 0:
-        return lanczos_resize(img, tw, th) if (img.shape[1] != tw or img.shape[0] != th) else img.copy()
+        out = (
+            lanczos_resize(img, tw, th)
+            if (img.shape[1] != tw or img.shape[0] != th)
+            else img.copy()
+        )
+        return apply_strength(out, src_for_strength, tw, th, strength)
 
     if infer_fn is None:
         if descriptor is None:
@@ -116,9 +157,9 @@ def run(
             f"intermediate {intermediate_w}×{intermediate_h})"
         )
 
-    import torch
+    if _torch_available() and getattr(device, "type", None) == "cuda":
+        import torch
 
-    if getattr(device, "type", None) == "cuda":
         torch.cuda.synchronize(device)
         free_mb = (torch.cuda.mem_get_info(device)[0]) // (1024 * 1024)
         if show_progress:
@@ -131,12 +172,33 @@ def run(
         job_dir = Path(job_dir)
         job_dir.mkdir(parents=True, exist_ok=True)
 
+    start_pass = 0
+    if resume_from_checkpoint and job_dir is not None:
+        from .checkpoint import first_incomplete_pass, load_pass_complete
+
+        start_pass = first_incomplete_pass(job_dir, passes)
+        if start_pass >= passes:
+            # All passes already complete — load the last output and skip SR.
+            loaded = load_pass_complete(job_dir, passes)
+            if loaded is not None:
+                current = loaded
+            start_pass = passes
+        elif start_pass > 0:
+            loaded = load_pass_complete(job_dir, start_pass)
+            if loaded is not None:
+                current = loaded
+            else:
+                start_pass = 0
+                current = img
+
     pass_bar = tqdm(
-        range(passes),
+        range(start_pass, passes),
         desc="Passes",
         unit="pass",
         disable=not show_progress,
         position=0,
+        initial=start_pass,
+        total=passes,
     )
 
     try:
@@ -175,6 +237,10 @@ def run(
                         }
                     )
 
+            # Resume strip only for the first incomplete pass.
+            do_resume = bool(
+                resume_from_checkpoint and job_dir is not None and p == start_pass
+            )
             prev = current
             current = _upscale_pass(
                 prev,
@@ -190,11 +256,14 @@ def run(
                 device=device,
                 job_dir=job_dir,
                 pass_index=p + 1,
-                resume=resume_from_checkpoint and p == 0,
+                resume=do_resume,
             )
-            # Only the first pass may resume a strip checkpoint; later passes start fresh.
-            resume_from_checkpoint = False
             del prev
+
+            if job_dir is not None:
+                from .checkpoint import save_pass_complete
+
+                save_pass_complete(job_dir, p + 1, current)
 
             if mid_pass_previews and job_dir is not None:
                 from PIL import Image
@@ -203,9 +272,14 @@ def run(
                 ph, pw = preview.shape[:2]
                 if max(ph, pw) > 1024:
                     r = 1024 / max(ph, pw)
+                    # Strip-friendly: materialize a small preview only.
                     preview = lanczos_resize(
-                        preview, max(1, round(pw * r)), max(1, round(ph * r))
+                        _materialize(preview),
+                        max(1, round(pw * r)),
+                        max(1, round(ph * r)),
                     )
+                else:
+                    preview = _materialize(preview)
                 art = job_dir / f"pass_{p + 1}.png"
                 Image.fromarray(preview).save(art)
                 if on_progress:
@@ -225,21 +299,28 @@ def run(
                 and disk_intermediate_threshold > 0
                 and long_edge >= disk_intermediate_threshold
             ):
-                if tmp_dir is None:
-                    tmp_dir = tempfile.TemporaryDirectory(prefix="upscale_")
-                spill_path = Path(tmp_dir.name) / f"pass_{p + 1}.uint8.mmap"
-                arr = np.asarray(current)
-                shape = tuple(arr.shape)
-                mm = np.memmap(
-                    spill_path, dtype=np.uint8, mode="w+", shape=shape
-                )
-                mm[:] = arr
-                mm.flush()
-                del current, arr, mm
-                gc.collect()
-                current = np.memmap(
-                    spill_path, dtype=np.uint8, mode="r", shape=shape
-                )
+                if job_dir is not None and _is_memmap(current):
+                    # Already file-backed under job_dir — keep it as next input.
+                    pass
+                else:
+                    spill_root = job_dir
+                    if spill_root is None:
+                        if tmp_dir is None:
+                            tmp_dir = tempfile.TemporaryDirectory(prefix="upscale_")
+                        spill_root = Path(tmp_dir.name)
+                    spill_path = Path(spill_root) / f"pass_{p + 1}_spill.uint8.mmap"
+                    arr = _materialize(current)
+                    shape = tuple(arr.shape)
+                    mm = np.memmap(spill_path, dtype=np.uint8, mode="w+", shape=shape)
+                    step = max(1, 64)
+                    for y0 in range(0, shape[0], step):
+                        y1 = min(shape[0], y0 + step)
+                        mm[y0:y1] = arr[y0:y1]
+                    mm.flush()
+                    del current, arr, mm
+                    current = np.memmap(
+                        spill_path, dtype=np.uint8, mode="r", shape=shape
+                    )
 
         pass_bar.set_description("Done")
         pass_bar.close()
@@ -248,26 +329,17 @@ def run(
         if out_w != tw or out_h != th:
             if show_progress:
                 print(f"  Resize {out_w}×{out_h} → {tw}×{th} (Lanczos)")
-            # Materialize mmap before resize if needed
-            if getattr(current, "filename", None) is not None or type(current).__name__ == "memmap":
-                current = np.asarray(current)
-            current = lanczos_resize(current, tw, th)
-        elif getattr(current, "filename", None) is not None or type(current).__name__ == "memmap":
-            current = np.array(current)
+            current = lanczos_resize(_materialize(current), tw, th)
+        elif _is_memmap(current):
+            current = np.array(current, copy=True)
 
-        if strength < 1.0:
-            src = strength_source if strength_source is not None else img
-            plain = lanczos_resize(src, tw, th)
-            a = float(np.clip(strength, 0.0, 1.0))
-            current = np.clip(
-                current.astype(np.float32) * a + plain.astype(np.float32) * (1.0 - a),
-                0,
-                255,
-            ).astype(np.uint8)
+        current = apply_strength(current, src_for_strength, tw, th, strength)
 
         elapsed = time.perf_counter() - t0
         vram_info = ""
-        if getattr(device, "type", None) == "cuda":
+        if _torch_available() and getattr(device, "type", None) == "cuda":
+            import torch
+
             peak_mb = torch.cuda.max_memory_allocated(device) // (1024 * 1024)
             vram_info = f", peak VRAM {peak_mb} MB"
             torch.cuda.reset_peak_memory_stats(device)
@@ -284,7 +356,11 @@ def run(
     except BaseException:
         # Release memmap before tmp cleanup on cancel/error (Windows lock).
         try:
-            if getattr(current, "filename", None) is not None or type(current).__name__ == "memmap":
+            if _is_memmap(current):
+                try:
+                    current._mmap.close()  # type: ignore[attr-defined]
+                except Exception:  # noqa: BLE001
+                    pass
                 current = None  # type: ignore[assignment]
         except Exception:  # noqa: BLE001
             pass
@@ -292,6 +368,15 @@ def run(
         raise
     finally:
         if tmp_dir is not None:
+            try:
+                if current is not None and _is_memmap(current):
+                    try:
+                        current._mmap.close()  # type: ignore[attr-defined]
+                    except Exception:  # noqa: BLE001
+                        pass
+                    current = None  # type: ignore[assignment]
+            except Exception:  # noqa: BLE001
+                pass
             gc.collect()
             try:
                 tmp_dir.cleanup()
@@ -315,17 +400,19 @@ def _upscale_pass(
     pass_index: int = 0,
     resume: bool = False,
 ) -> np.ndarray:
-    import torch
+    from .job_prep import clamp_overlap
 
     current_tile = tile
-    for _attempt in range(4):
+    current_overlap = clamp_overlap(overlap, current_tile)
+    # Shrink on OOM down to tile=128. Tiles already below 128 run once.
+    while True:
         try:
             return tiled_upscale(
                 img,
                 infer_fn,
                 model_scale=model_scale,
                 tile=current_tile,
-                overlap=overlap,
+                overlap=current_overlap,
                 show_progress=show_progress,
                 pass_label=pass_label,
                 cancel_event=cancel_event,
@@ -333,23 +420,30 @@ def _upscale_pass(
                 on_tile=on_tile,
                 job_dir=job_dir,
                 pass_index=pass_index,
-                resume=resume and _attempt == 0,
+                # Resume only when tile still matches the checkpoint's tile.
+                resume=resume and current_tile == tile,
             )
         except Exception as exc:  # noqa: BLE001
-            is_oom = isinstance(exc, torch.cuda.OutOfMemoryError) or (
-                "out of memory" in str(exc).lower()
-            )
-            if not is_oom or current_tile <= 128:
+            if not _is_oom(exc) or current_tile <= 128:
                 raise
-            new_tile = current_tile // 2
+            new_tile = max(128, current_tile // 2)
+            if new_tile >= current_tile:
+                raise RuntimeError("Exhausted OOM retries") from exc
             warnings.warn(
-                f"OOM at tile={current_tile}; retrying with tile={new_tile}"
+                f"OOM at tile={current_tile}; retrying with tile={new_tile}",
+                stacklevel=2,
             )
-            gc.collect()
-            if getattr(device, "type", None) == "cuda":
+            if _torch_available() and getattr(device, "type", None) == "cuda":
+                import torch
+
+                gc.collect()
                 torch.cuda.empty_cache()
+            else:
+                gc.collect()
             current_tile = new_tile
-    raise RuntimeError("Exhausted OOM retries")
+            current_overlap = clamp_overlap(overlap, current_tile)
+            # After first OOM, do not resume a mismatched strip.
+            resume = False
 
 
 def upscale_alpha(

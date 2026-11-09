@@ -10,6 +10,7 @@ from typing import Any
 from .compare import compare_models as run_model_compare
 from .config import UpscaleConfig
 from .engine import execute
+from .help_content import get_help as load_help
 from .help_content import list_topics
 from .models import DEFAULT_WEIGHTS_DIR, add_external_model, all_models, model_status
 from .schema import CropRect
@@ -232,7 +233,7 @@ def build_mcp() -> Any:
     @mcp.tool()
     def get_help(topic: str = "mcp", lang: str = "en") -> dict[str, str]:
         """Return markdown help for a topic (see list in /api/help)."""
-        body = get_help(topic, lang)
+        body = load_help(topic, lang)
         return {"topic": topic, "lang": lang, "markdown": body}
 
     @mcp.tool()

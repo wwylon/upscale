@@ -14,10 +14,11 @@ from upscaler.schema import (
 )
 
 
-def test_language_catalog_has_fourteen():
-    assert len(LANGUAGE_CATALOG) == 14
+def test_language_catalog_has_fifteen():
+    assert len(LANGUAGE_CATALOG) == 15
     enabled = [c for c in LANGUAGE_CATALOG if c["enabled"]]
-    assert {c["code"] for c in enabled} == {"en", "pl"}
+    # zh and ar are frozen layout-check locales (larger CJK text, RTL).
+    assert {c["code"] for c in enabled} == {"en", "pl", "zh", "ar"}
 
 
 def test_name_pattern_render():

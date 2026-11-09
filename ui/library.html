@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/ui/i18n.config.js"></script>
+<script src="/ui/i18n.js"></script>
 <script src="/ui/support.js"></script>
 </head>
 <body>
@@ -14,51 +16,64 @@
 </helmet>
 <div style="min-height:100vh;color:var(--color-text);font-family:var(--font-body)">
   <header style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:16px 24px;border-bottom:2px solid var(--color-divider);flex-wrap:wrap">
-    <div style="display:flex;align-items:baseline;gap:16px"><span style="font-family:var(--font-heading);font-weight:800;font-size:22px;letter-spacing:-0.02em">UPSCALE<span style="color:var(--color-accent)">.</span></span><span style="font-size:13px">Model library</span></div>
-    <a href="./" style="font-size:14px">← Back to upscaler</a>
+    <div style="display:flex;align-items:baseline;gap:16px"><span style="font-family:var(--font-heading);font-weight:800;font-size:22px;letter-spacing:-0.02em">UPSCALE<span style="color:var(--color-accent)">.</span></span><span style="font-size:13px" data-i18n="nav.library">Model library</span></div>
+    <div style="display:flex;gap:16px;align-items:center"><select class="input" aria-label="Language" data-i18n-aria-label="settings.language" value="{{ lang }}" onChange="{{ onLang }}" style="width:auto;min-height:0;padding:4px 8px"><option value="en">English</option><option value="pl">Polski</option><option value="zh">中文</option><option value="ar">العربية</option></select><a href="./" style="font-size:14px">← <span data-i18n="nav.back">Back to upscaler</span></a></div>
   </header>
   <main style="display:flex;flex-wrap:wrap;align-items:stretch">
     <section style="flex:3 1 560px;min-width:0;border-right:2px solid var(--color-divider)">
       <div style="padding:24px;display:flex;flex-direction:column;gap:16px;border-bottom:2px solid var(--color-divider)">
-        <h2 style="margin:0">Installed models</h2>
-        <sc-if value="{{ attn }}" hint-placeholder-val="{{ false }}"><div style="border:2px solid var(--color-accent);background:var(--color-accent-100);padding:12px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><b>Some models are not ready.</b> {{ attnText }}. They cannot be used until fixed.</div><button class="btn btn-primary" onClick="{{ fixAll }}">Fix all</button></div></sc-if>
+        <h2 style="margin:0" data-i18n="library.installed_models">Installed models</h2>
+        <sc-if value="{{ attnFail }}" hint-placeholder-val="{{ false }}"><div style="border:2px solid var(--color-accent);background:var(--color-accent-100);padding:12px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><b data-i18n="library.fail_banner">Some installed models failed verification.</b> {{ attnFailText }}</div><button class="btn btn-primary" onClick="{{ fixAll }}" data-i18n="library.redownload_failed">Re-download failed</button></div></sc-if>
+        <sc-if value="{{ attnMissing }}" hint-placeholder-val="{{ false }}"><div style="border:2px solid var(--color-divider);padding:12px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div>{{ attnMissingText }} <span data-i18n="library.missing_note">Optional catalog weights can be downloaded when you need them.</span></div><button class="btn btn-secondary" onClick="{{ fixAll }}" data-i18n="library.download_missing">Download missing</button></div></sc-if>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));border-top:2px solid var(--color-divider)">
-          <div style="padding:12px 0"><div style="font-size:12px">Models</div><div style="font-weight:800;font-size:28px">{{ count }}</div></div>
-          <div style="padding:12px 0"><div style="font-size:12px">Disk used</div><div style="font-weight:800;font-size:28px">{{ disk }}</div></div>
-          <div style="padding:12px 0"><div style="font-size:12px">Folder</div><div style="font-weight:700;font-size:14px;word-break:break-all">{{ modelsDir }}</div></div>
+          <div style="padding:12px 0"><div style="font-size:12px" data-i18n="library.stat.catalog">In catalog</div><div style="font-weight:800;font-size:28px">{{ count }}</div></div>
+          <div style="padding:12px 0"><div style="font-size:12px" data-i18n="library.stat.installed">Installed</div><div style="font-weight:800;font-size:28px">{{ installedCount }}</div></div>
+          <div style="padding:12px 0"><div style="font-size:12px" data-i18n="library.stat.disk">Disk used</div><div style="font-weight:800;font-size:28px">{{ disk }}</div></div>
+          <div style="padding:12px 0"><div style="font-size:12px" data-i18n="library.stat.folder">Folder</div><div style="font-weight:700;font-size:14px;word-break:break-all">{{ modelsDir }}</div></div>
         </div>
-        <p style="margin:0;font-size:13px;line-height:1.45;opacity:.9">Hide models to simplify lists. Display name and description are saved on this device. Hiding does not delete weights.</p>
+        <p style="margin:0;font-size:13px;line-height:1.45;opacity:.9" data-i18n="library.hide_note">Hide models to simplify lists. Display name and description are saved on this device. Hiding does not delete weights.</p>
         <div class="seg"><sc-for list="{{ filters }}" as="f" hint-placeholder-count="5"><button class="seg-opt" style="{{ f.style }}" onClick="{{ f.pick }}">{{ f.label }}</button></sc-for></div>
+        <div style="font-size:13px;font-weight:700">{{ shownLabel }}</div>
       </div>
-      <div style="overflow-x:auto">
-      <table class="table" style="width:100%">
-        <thead><tr><th>Name</th><th>Type</th><th>Scale</th><th>Size</th><th>Source</th><th>Status</th><th></th></tr></thead>
-        <tbody><sc-for list="{{ rows }}" as="m" hint-placeholder-count="6"><tr>
-          <td style="min-width:220px">
-            <div style="font-weight:700;font-size:12px;opacity:.75;margin-bottom:6px">{{ m.id }}</div>
-            <label style="display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:8px"><input type="checkbox" checked="{{ m.visible }}" onChange="{{ m.toggleVis }}" style="accent-color:var(--color-accent);width:18px;height:18px;margin:0"> Visible in lists</label>
-            <div class="field" style="margin-bottom:8px"><label>Display name</label><input class="input" value="{{ m.label }}" onInput="{{ m.onLabel }}"></div>
-            <div class="field"><label>Description</label><input class="input" value="{{ m.desc }}" onInput="{{ m.onDesc }}"></div>
-          </td>
-          <td>{{ m.kind }}</td><td>{{ m.scale }}</td><td>{{ m.size }}</td><td>{{ m.source }}</td>
-          <td><span class="{{ m.cls }}">{{ m.status }}</span></td>
-          <td><button class="btn btn-ghost" onClick="{{ m.act }}">{{ m.actLabel }}</button></td>
-        </tr></sc-for></tbody>
-      </table></div>
+      <div style="display:flex;flex-direction:column">
+        <sc-if value="{{ emptyFilter }}" hint-placeholder-val="{{ false }}"><div style="padding:24px;font-size:14px;opacity:.85"><span data-i18n="library.empty_filter.lead">No models in this filter. Choose</span> <b data-i18n="library.filter.all">All</b> <span data-i18n="library.empty_filter.tail">to see the full catalog.</span></div></sc-if>
+        <sc-for list="{{ rows }}" as="m" hint-placeholder-count="4">
+          <div style="padding:16px 24px;border-bottom:2px solid var(--color-divider);display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
+              <div style="min-width:0">
+                <div style="font-family:var(--font-heading);font-weight:800;font-size:18px;letter-spacing:-0.02em">{{ m.label }}</div>
+                <div style="font-size:12px;opacity:.75;margin-top:2px">{{ m.id }}</div>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <span class="tag tag-outline">{{ m.kind }}</span>
+                <span class="tag tag-outline">{{ m.scale }}</span>
+                <span class="tag tag-outline">{{ m.size }}</span>
+                <span class="tag tag-outline">{{ m.source }}</span>
+                <span class="{{ m.cls }}">{{ m.status }}</span>
+                <button class="btn btn-secondary" onClick="{{ m.act }}">{{ m.actLabel }}</button>
+              </div>
+            </div>
+            <div style="font-size:13px;line-height:1.45;opacity:.9">{{ m.desc }}</div>
+            <label style="display:flex;gap:8px;align-items:center;font-size:13px"><input type="checkbox" checked="{{ m.visible }}" onChange="{{ m.toggleVis }}" style="accent-color:var(--color-accent);width:18px;height:18px;margin:0"> <span data-i18n="library.visible">Visible in lists</span></label>
+            <div class="field" style="margin:0"><label data-i18n="library.display_name">Display name</label><input class="input" value="{{ m.label }}" onInput="{{ m.onLabel }}"></div>
+            <div class="field" style="margin:0"><label data-i18n="library.description">Description</label><input class="input" value="{{ m.desc }}" onInput="{{ m.onDesc }}"></div>
+          </div>
+        </sc-for>
+      </div>
     </section>
 
     <aside style="flex:1 1 320px;padding:24px;display:flex;flex-direction:column;gap:20px">
-      <h3 style="margin:0">Add an external model</h3>
+      <h3 style="margin:0" data-i18n="library.add_title">Add an external model</h3>
       <div class="seg"><sc-for list="{{ sources }}" as="f" hint-placeholder-count="3"><button class="seg-opt" style="{{ f.style }}" onClick="{{ f.pick }}">{{ f.label }}</button></sc-for></div>
-      <div class="field"><label>Name</label><input class="input" placeholder="4x-MyModel" value="{{ name }}" onInput="{{ onName }}"></div>
-      <sc-if value="{{ isUrl }}" hint-placeholder-val="{{ true }}"><div class="field"><label>Download URL</label><input class="input" placeholder="https://…/model.safetensors" value="{{ src }}" onInput="{{ onSrc }}"></div>
-        <div class="field"><label>SHA-256 (optional)</label><input class="input" placeholder="verify the download" value="{{ sha }}" onInput="{{ onSha }}"></div></sc-if>
-      <sc-if value="{{ isFile }}" hint-placeholder-val="{{ false }}"><div style="border:2px dashed var(--color-text);padding:24px;display:flex;flex-direction:column;gap:8px"><div style="font-weight:700">Drop a .safetensors or .pth file</div><div style="font-size:13px">The file is copied to the models folder and hashed.</div><input type="file" accept=".pth,.pt,.safetensors,.onnx" ref="{{ fileRef }}" onChange="{{ onFile }}" style="display:none"><button class="btn btn-secondary" style="align-self:flex-start" onClick="{{ pickFile }}">Choose file…</button><sc-if value="{{ fileName }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;font-weight:700">{{ fileName }}</div></sc-if></div></sc-if>
-      <sc-if value="{{ isPath }}" hint-placeholder-val="{{ false }}"><div class="field"><label>Path on this machine</label><input class="input" placeholder="D:\ai\models\4x-MyModel.pth" value="{{ src }}" onInput="{{ onSrc }}"></div><div style="font-size:13px">Used in place; nothing is copied.</div></sc-if>
-      <div class="field"><label>Native scale</label><div class="seg"><sc-for list="{{ scales }}" as="f" hint-placeholder-count="3"><button class="seg-opt" style="{{ f.style }}" onClick="{{ f.pick }}">{{ f.label }}</button></sc-for></div></div>
-      <div style="border:2px solid var(--color-accent);padding:12px;font-size:13px;line-height:1.45">PyTorch .pth files can run code when loaded. Add them only from sources you trust. .safetensors files only hold weights and are safe to load.</div>
-      <div style="font-size:13px;line-height:1.5">Architecture (ESRGAN, SPAN, HAT, DAT, …) is detected from the weights. Find models on <a href="https://openmodeldb.info" target="_blank" rel="noopener">OpenModelDB ↗</a> or <a href="https://huggingface.co/models?other=super-resolution" target="_blank" rel="noopener">Hugging Face ↗</a>.</div>
-      <button class="btn btn-primary" style="opacity:{{ addOpacity }}" onClick="{{ add }}">Add to library</button>
+      <div class="field"><label data-i18n="library.name">Name</label><input class="input" placeholder="4x-MyModel" value="{{ name }}" onInput="{{ onName }}"></div>
+      <sc-if value="{{ isUrl }}" hint-placeholder-val="{{ true }}"><div class="field"><label data-i18n="library.download_url">Download URL</label><input class="input" placeholder="https://…/model.safetensors" value="{{ src }}" onInput="{{ onSrc }}"></div>
+        <div class="field"><label data-i18n="library.sha_optional">SHA-256 (optional)</label><input class="input" placeholder="verify the download" data-i18n-placeholder="library.sha_placeholder" value="{{ sha }}" onInput="{{ onSha }}"></div></sc-if>
+      <sc-if value="{{ isFile }}" hint-placeholder-val="{{ false }}"><div style="border:2px dashed var(--color-text);padding:24px;display:flex;flex-direction:column;gap:8px"><div style="font-weight:700" data-i18n="library.drop_file">Drop a .safetensors or .pth file</div><div style="font-size:13px" data-i18n="library.drop_note">The file is copied to the models folder and hashed.</div><input type="file" accept=".pth,.pt,.safetensors,.onnx" ref="{{ fileRef }}" onChange="{{ onFile }}" style="display:none"><button class="btn btn-secondary" style="align-self:flex-start" onClick="{{ pickFile }}" data-i18n="library.choose_file">Choose file…</button><sc-if value="{{ fileName }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;font-weight:700">{{ fileName }}</div></sc-if></div></sc-if>
+      <sc-if value="{{ isPath }}" hint-placeholder-val="{{ false }}"><div class="field"><label data-i18n="library.local_path_label">Path on this machine</label><input class="input" placeholder="D:\ai\models\4x-MyModel.pth" value="{{ src }}" onInput="{{ onSrc }}"></div><div style="font-size:13px" data-i18n="library.local_path_note">Used in place; nothing is copied.</div></sc-if>
+      <div class="field"><label data-i18n="library.native_scale">Native scale</label><div class="seg"><sc-for list="{{ scales }}" as="f" hint-placeholder-count="3"><button class="seg-opt" style="{{ f.style }}" onClick="{{ f.pick }}">{{ f.label }}</button></sc-for></div></div>
+      <div style="border:2px solid var(--color-accent);padding:12px;font-size:13px;line-height:1.45" data-i18n="library.pth_warning">PyTorch .pth files can run code when loaded. Add them only from sources you trust. .safetensors files only hold weights and are safe to load.</div>
+      <div style="font-size:13px;line-height:1.5"><span data-i18n="library.arch_note">Architecture (ESRGAN, SPAN, HAT, DAT, …) is detected from the weights.</span> <span data-i18n="library.find_models">Find models on</span> <a href="https://openmodeldb.info" target="_blank" rel="noopener">OpenModelDB ↗</a> <span data-i18n="library.or">or</span> <a href="https://huggingface.co/models?other=super-resolution" target="_blank" rel="noopener">Hugging Face ↗</a>.</div>
+      <button class="btn btn-primary" style="opacity:{{ addOpacity }}" onClick="{{ add }}" data-i18n="library.add">Add to library</button>
       <sc-if value="{{ msg }}" hint-placeholder-val="{{ false }}"><div style="font-size:14px;font-weight:700">{{ msg }}</div></sc-if>
     </aside>
   </main>
@@ -68,7 +83,19 @@
 class Component extends DCLogic {
   fileRef = React.createRef();
   state = { filter:'all', mode:'url', name:'', src:'', sha:'', scale:4, msg:'', file:null, models:[], modelsDir:'models/', hiddenModels:[], modelMeta:{} };
+  applyStoredPrefs(){
+    try{
+      const p=JSON.parse(localStorage.getItem('upscale.prefs')||'{}');
+      const r=document.documentElement.style;
+      const dark={'--color-bg':'#1b1a19','--color-surface':'#262423','--color-text':'#f3f2f2','--color-divider':'color-mix(in srgb, #f3f2f2 40%, transparent)','--color-neutral-100':'#2d2b2b','--color-neutral-200':'#3a3737','--color-neutral-300':'#4c4949','--color-neutral-400':'#605d5d','--color-neutral-500':'#7d7979','--color-neutral-600':'#9b9797','--color-neutral-700':'#bab6b6','--color-neutral-800':'#d7d3d3','--color-neutral-900':'#f8f4f4','--color-accent-100':'#4d170e','--color-accent-200':'#7c1405','--color-accent-700':'#ff9783','--color-accent-800':'#ffc4b8'};
+      const isDark=p.theme==='dark'||(p.theme==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);
+      for(const k in dark){if(isDark)r.setProperty(k,dark[k]);else r.removeProperty(k);}
+      r.setProperty('--fs',({normal:1,larger:1.15,largest:1.3})[p.fsize]||1);
+      r.colorScheme=isDark?'dark':'light';
+    }catch(e){}
+  }
   componentDidMount(){
+    this.applyStoredPrefs();
     const prefs=this.loadModelPrefs();
     this.setState(prefs);
     this.refreshModels();
@@ -81,7 +108,29 @@ class Component extends DCLogic {
   }
   saveHidden(hidden){try{localStorage.setItem('upscale.hiddenModels',JSON.stringify(hidden||[]));}catch(e){}}
   saveMeta(meta){try{localStorage.setItem('upscale.modelMeta',JSON.stringify(meta||{}));}catch(e){}}
+  kindLabel(k){return({Photo:i18n.t('models.kind.photo'),Anime:i18n.t('models.kind.anime'),Fast:i18n.t('models.kind.fast'),External:i18n.t('models.source.external')})[k]||k;}
+  sourceLabel(v){return v==='Built-in'?i18n.t('models.source.builtin'):v==='External'?i18n.t('models.source.external'):v;}
   isHidden(name){return(this.state.hiddenModels||[]).includes(name);}
+  kindOf(m){
+    const tagged=(m.tags||[]).find(t=>/^(Photo|Anime|Fast|External)$/i.test(String(t||'')));
+    if(tagged){ const s=String(tagged); return s.charAt(0).toUpperCase()+s.slice(1).toLowerCase(); }
+    if(m.source==='external') return 'External';
+    const blob=((m.name||'')+' '+(m.description||'')).toLowerCase();
+    if(/anime|illustration|video/.test(blob)) return 'Anime';
+    if(/span|fast|ch48|nomosuni_span/.test(blob)) return 'Fast';
+    return 'Photo';
+  }
+  mapApiModels(api){
+    return (api||[]).map(m=>[
+      m.name,
+      m.description||'',
+      this.kindOf(m),
+      m.scale||4,
+      m.size_bytes||0,
+      m.source==='built-in'?'Built-in':'External',
+      m.status==='installed'?'ok':m.status==='failed'?'err':'dl'
+    ]);
+  }
   async refreshModels(){
     try{
       let list=[];
@@ -108,13 +157,10 @@ class Component extends DCLogic {
       }
       const api=window.__UPSCALE_MODELS__;
       if(Array.isArray(api)&&api.length){
-        list=api.map(m=>[m.name,m.description||'',(m.tags&&m.tags[0])||'General',m.scale||4,m.size_bytes||0,m.source==='built-in'?'Built-in':'External',m.status==='installed'?'ok':m.status==='failed'?'err':'dl']);
+        list=this.mapApiModels(api);
       }else{
         const res=await fetch('/api/models');
-        if(res.ok){
-          const api2=await res.json();
-          list=(api2||[]).map(m=>[m.name,m.description||'',(m.tags&&m.tags[0])||'General',m.scale||4,m.size_bytes||0,m.source==='built-in'?'Built-in':'External',m.status==='installed'?'ok':m.status==='failed'?'err':'dl']);
-        }
+        if(res.ok) list=this.mapApiModels(await res.json());
       }
       this.setState({models:list,modelsDir:modelsDir||'models/'});
     }catch(e){ this.setState({msg:String(e.message||e)}); }
@@ -124,14 +170,40 @@ class Component extends DCLogic {
     const list = s.models.filter(m => s.filter === 'all' || m[2] === s.filter || (s.filter === 'External' && m[5] === 'External'));
     const mb = n => { const v=typeof n==='number'?n:0; if(v>=1e9)return (v/1e9).toFixed(1)+' GB'; if(v>=1e6)return Math.max(1,Math.round(v/1e6))+' MB'; if(v>=1e3)return Math.max(1,Math.round(v/1e3))+' KB'; return v?v+' B':'—'; };
     const installed = s.models.filter(m => m[6] === 'ok');
+    const failed = s.models.filter(m => m[6] === 'err');
+    const missing = s.models.filter(m => m[6] === 'dl');
     const totalBytes = installed.reduce((a, m) => a + (m[4]||0), 0);
     const ready = s.name.trim() && (s.mode === 'file' ? !!s.file : !!s.src.trim());
     const metaOf = id => (s.modelMeta||{})[id]||{};
     return {
-      count: s.models.length, attn: s.models.filter(m => m[6] !== 'ok').length > 0, attnText: s.models.filter(m => m[6] === 'err').length + ' failed to load, ' + s.models.filter(m => m[6] === 'dl').length + ' not downloaded',
-      fixAll: async () => { const names=(window.__UPSCALE_MODELS__||[]).filter(m=>m.status!=='installed').map(m=>m.name);this.setState({msg:'Downloading…'});try{ for(const n of names){ if(window.UpscaleBackend) await window.UpscaleBackend.downloadModel(n); }await this.refreshModels();this.setState({msg:'All models are ready.'}); }catch(e){ this.setState({msg:String(e.message||e)}); } },
+      count: s.models.length, installedCount: installed.length, shownLabel: i18n.t('library.showing', {n: list.length}), emptyFilter: list.length===0,
+      attnFail: failed.length > 0, attnFailText: i18n.t('library.n_failed', {n: failed.length}),
+      attnMissing: failed.length === 0 && missing.length > 0, attnMissingText: i18n.t('library.n_missing', {n: missing.length}),
+      fixAll: async () => {
+        const catalog=window.__UPSCALE_MODELS__||[];
+        // Only fetch entries with a real download URL. Skip path-only leftovers and
+        // placeholder hashes that need a trusted first pin.
+        const canFetch=m=>m && m.status!=='installed' && String(m.url||'').trim() && !String(m.sha256||'').startsWith('PLACEHOLDER_');
+        const todo=catalog.filter(canFetch);
+        const skipped=catalog.filter(m=>m && m.status!=='installed' && !canFetch(m)).map(m=>m.name);
+        if(!todo.length){
+          await this.refreshModels();
+          this.setState({msg:skipped.length?i18n.t('library.msg.nothing_skipped',{list:skipped.join(', ')}):i18n.t('library.msg.nothing')});
+          return;
+        }
+        this.setState({msg:i18n.t('library.msg.downloading_n',{n:todo.length})});
+        const errors=[];
+        for(const m of todo){
+          try{
+            if(window.UpscaleBackend) await window.UpscaleBackend.downloadModel(m.name);
+          }catch(e){ errors.push(m.name+': '+String(e.message||e)); }
+        }
+        await this.refreshModels();
+        if(errors.length) this.setState({msg:i18n.t('library.msg.finished_errors',{errors:errors.join(' | ')})+(skipped.length?' '+i18n.t('library.msg.skipped',{list:skipped.join(', ')}):'')});
+        else this.setState({msg:i18n.t('library.msg.finished')+(skipped.length?' '+i18n.t('library.msg.skipped_path',{list:skipped.join(', ')}):'')});
+      },
       disk: mb(totalBytes), modelsDir: s.modelsDir || 'models/',
-      filters: ['all', 'Photo', 'Anime', 'Fast', 'External'].map(v => ({ label: v === 'all' ? 'All' : v, style: act(s.filter === v), pick: set({ filter: v }) })),
+      filters: ['all', 'Photo', 'Anime', 'Fast', 'External'].map(v => ({ label: v === 'all' ? i18n.t('library.filter.all') : this.kindLabel(v), style: act(s.filter === v), pick: set({ filter: v }) })),
       rows: list.map(m => {
         const id=m[0], meta=metaOf(id);
         return {
@@ -140,20 +212,21 @@ class Component extends DCLogic {
           toggleVis: e => { const on=e.target.checked; this.setState(st=>{ const hidden=on?(st.hiddenModels||[]).filter(n=>n!==id):[...(st.hiddenModels||[]).filter(n=>n!==id),id]; this.saveHidden(hidden); return{hiddenModels:hidden}; }); },
           onLabel: e => { const v=e.target.value; this.setState(st=>{ const modelMeta={...(st.modelMeta||{}),[id]:{...(st.modelMeta||{})[id],label:v}}; this.saveMeta(modelMeta); return{modelMeta}; }); },
           onDesc: e => { const v=e.target.value; this.setState(st=>{ const modelMeta={...(st.modelMeta||{}),[id]:{...(st.modelMeta||{})[id],description:v}}; this.saveMeta(modelMeta); return{modelMeta}; }); },
-          kind: m[2], scale: m[3] + '×', size: m[6] === 'dl' ? 'not downloaded' : m[6] === 'err' ? 'corrupt' : mb(m[4]), source: m[5],
-          status: m[6] === 'ok' ? 'Installed' : m[6] === 'err' ? 'Failed to load' : 'Not downloaded', cls: m[6] === 'ok' ? 'tag tag-outline' : m[6] === 'err' ? 'tag tag-accent' : 'tag tag-neutral',
-          actLabel: m[5] === 'External' && m[6] === 'ok' ? 'Remove' : m[6] === 'ok' ? 'Verify' : m[6] === 'err' ? 'Re-download' : 'Download',
+          kind: this.kindLabel(m[2]), scale: m[3] + '×', size: m[6] === 'dl' ? i18n.t('library.size.missing') : m[6] === 'err' ? i18n.t('library.size.corrupt') : mb(m[4]), source: this.sourceLabel(m[5]),
+          status: m[6] === 'ok' ? i18n.t('library.status.installed') : m[6] === 'err' ? i18n.t('library.status.failed') : i18n.t('library.status.missing'), cls: m[6] === 'ok' ? 'tag tag-outline' : m[6] === 'err' ? 'tag tag-accent' : 'tag tag-neutral',
+          actLabel: m[5] === 'External' && m[6] === 'ok' ? i18n.t('library.act.remove') : m[6] === 'ok' ? i18n.t('library.act.verify') : m[6] === 'err' ? i18n.t('models.re_download') : i18n.t('action.download'),
           act: async () => {
-            if(m[5]==='External' && m[6]==='ok'){ this.setState({msg:'Removing external models is not supported yet — delete the file under the models folder manually.'}); return; }
-            if(m[6]==='ok'){ this.setState({msg:m[0]+': installed'}); return; }
-            try{ this.setState({msg:m[0]+': downloading…'}); if(window.UpscaleBackend) await window.UpscaleBackend.downloadModel(m[0]); await this.refreshModels(); this.setState({msg:m[0]+': ready'}); }catch(e){ this.setState({msg:m[0]+': '+String(e.message||e)}); }
+            if(m[5]==='External' && m[6]==='ok'){ this.setState({msg:i18n.t('library.msg.remove_unsupported')}); return; }
+            if(m[6]==='ok'){ this.setState({msg:i18n.t('library.msg.model_installed',{model:m[0]})}); return; }
+            try{ this.setState({msg:i18n.t('library.msg.model_downloading',{model:m[0]})}); if(window.UpscaleBackend) await window.UpscaleBackend.downloadModel(m[0]); await this.refreshModels(); this.setState({msg:i18n.t('library.msg.model_ready',{model:m[0]})}); }catch(e){ this.setState({msg:m[0]+': '+String(e.message||e)}); }
           }
         };
       }),
-      sources: [['url', 'URL'], ['file', 'Upload file'], ['path', 'Local path']].map(([v, l]) => ({ label: l, style: act(s.mode === v), pick: set({ mode: v, file:null }) })),
+      sources: [['url', i18n.t('library.source.url')], ['file', i18n.t('library.source.file')], ['path', i18n.t('library.source.path')]].map(([v, l]) => ({ label: l, style: act(s.mode === v), pick: set({ mode: v, file:null }) })),
       scales: [2, 4, 8].map(v => ({ label: v + '×', style: act(s.scale === v), pick: set({ scale: v }) })),
       isUrl: s.mode === 'url', isFile: s.mode === 'file', isPath: s.mode === 'path',
-      name: s.name, src: s.src, sha: s.sha, msg: s.msg, fileName: s.file ? (s.file.name||'selected') : '',
+      name: s.name, src: s.src, sha: s.sha, msg: s.msg, fileName: s.file ? (s.file.name||i18n.t('library.selected')) : '',
+      lang:(i18n.isQa?'en':i18n.locale), onLang:e=>i18n.setLocale(e.target.value),
       fileRef: this.fileRef, pickFile:()=>{const el=this.fileRef&&this.fileRef.current;if(el)el.click();},
       onFile:e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;const base=f.name.replace(/\.(pth|pt|safetensors|onnx)$/i,'');this.setState({file:f,name:s.name.trim()?s.name:base});},
       onName: e => this.setState({ name: e.target.value }), onSrc: e => this.setState({ src: e.target.value }), onSha: e => this.setState({ sha: e.target.value }),
@@ -164,7 +237,7 @@ class Component extends DCLogic {
         try{
           if(this.state.mode==='file'){
             if(!file) return;
-            if(window.UpscaleBackend&&window.UpscaleBackend.uploadModel) await window.UpscaleBackend.uploadModel(file,{name:n,scale,description:'Uploaded · '+scale+'×'});
+            if(window.UpscaleBackend&&window.UpscaleBackend.uploadModel) await window.UpscaleBackend.uploadModel(file,{name:n,scale,description:i18n.t('library.uploaded_desc',{scale})});
             else {
               const fd=new FormData(); fd.append('file',file,file.name); fd.append('name',n); fd.append('scale',String(scale));
               const res=await fetch('/api/models/upload',{method:'POST',body:fd}); if(!res.ok) throw new Error(await res.text());
@@ -175,8 +248,8 @@ class Component extends DCLogic {
             if(window.UpscaleBackend) await window.UpscaleBackend.addModel(body);
           }
           await this.refreshModels();
-          this.setState({ name:'', src:'', sha:'', file:null, msg:'Registered on server. Architecture detected on first use.', filter:'all' });
-        }catch(e){ this.setState({msg:'Failed: '+String(e.message||e)}); }
+          this.setState({ name:'', src:'', sha:'', file:null, msg:i18n.t('library.msg.registered'), filter:'all' });
+        }catch(e){ this.setState({msg:i18n.t('library.msg.failed',{err:String(e.message||e)})}); }
       }
     };
   }

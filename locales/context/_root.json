@@ -1,0 +1,13 @@
+{
+  "cmp.progress": "Placeholder frame: translate the whole phrase as it reads with real values; do not translate 'of' word for word, the target language may need a different word order or no preposition at all.",
+  "library.showing": {
+    "note": "Count of models in the visible list, not a promise: past or neutral form, never 'Pokażę'.",
+    "approved": {
+      "pl": "{n, plural, one {Wyświetlono # model} few {Wyświetlono # modele} many {Wyświetlono # modeli} other {Wyświetlono # modelu}}"
+    }
+  },
+  "preflight.file_range": "Placeholder frame: translate the whole phrase as it reads with real values; do not translate 'to' word for word, the target language may need a different word order or no preposition at all.",
+  "preflight.of_free": "Placeholder frame: translate the whole phrase as it reads with real values; do not translate 'of' word for word, the target language may need a different word order or no preposition at all.",
+  "preflight.time_api": "Placeholder frame: translate the whole phrase as it reads with real values; do not translate 'on' word for word, the target language may need a different word order or no preposition at all.",
+  "stage.batch_item": "Placeholder frame: translate the whole phrase as it reads with real values; do not translate 'of' word for word, the target language may need a different word order or no preposition at all."
+}

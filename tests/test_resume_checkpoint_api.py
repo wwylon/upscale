@@ -10,9 +10,9 @@ from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
+from png_fixtures import TINY_PNG
 
 import upscaler.server as server
-from png_fixtures import TINY_PNG
 from upscaler.checkpoint import StripCheckpoint, save_strip_checkpoint
 from upscaler.schema import JobSettings
 from upscaler.server import JobRecord, JobState, app
@@ -175,6 +175,43 @@ def test_list_and_resume_checkpoint(client: TestClient, tmp_path: Path):
                 time.sleep(0.05)
             else:
                 pytest.fail("resumed job never done")
+
+
+def test_interrupted_skips_incomplete_strip_without_carry(client: TestClient):
+    """strip.json with progress but no carry (and no has_carry:false) is not resumable."""
+    job_id = "stalecarry01"
+    job_dir = server.JOBS_ROOT / job_id
+    ck_dir = job_dir / "checkpoints"
+    ck_dir.mkdir(parents=True, exist_ok=True)
+    (job_dir / "input.png").write_bytes(TINY_PNG)
+    (job_dir / "settings.json").write_text(
+        '{"scale":2,"algorithm":"nearest"}', encoding="utf-8"
+    )
+    # Intentionally omit has_carry — load_strip_checkpoint treats that as unsafe.
+    (ck_dir / "strip.json").write_text(
+        json.dumps(
+            {
+                "pass_index": 0,
+                "flush_row": 32,
+                "out_h": 128,
+                "out_w": 128,
+                "channels": 3,
+                "model_scale": 4,
+                "tile": 64,
+                "overlap": 8,
+            }
+        ),
+        encoding="utf-8",
+    )
+    with server._jobs_lock:
+        server._jobs.pop(job_id, None)
+
+    listed = client.get("/api/jobs/interrupted").json()["jobs"]
+    assert all(j["id"] != job_id for j in listed)
+    assert not (ck_dir / "strip.json").is_file()
+
+    bad = client.post(f"/api/jobs/{job_id}/resume-checkpoint")
+    assert bad.status_code == 400
 
 
 def test_resume_checkpoint_orphaned_from_disk(client: TestClient, tmp_path: Path):

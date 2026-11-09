@@ -1,6 +1,11 @@
 from __future__ import annotations
 
+from pathlib import Path
+
+import numpy as np
+import pytest
 from click.testing import CliRunner
+from PIL import Image
 
 from upscaler.cli import cli, settings_to_cli
 from upscaler.config import UpscaleConfig
@@ -48,5 +53,44 @@ def test_settings_to_cli_overlap_tiff_vectorize_on_exists():
     assert "--vectorize-engine autotrace" in s
     assert "--vectorize-color-precision 4" in s
     assert "--vectorize-mode polygon" in s
-    assert "--name-pattern {stem}.{ext}" in s
+    assert "--name-pattern" in s
+    assert "{stem}.{ext}" in s
     assert "--on-exists overwrite" in s
+
+
+def test_validate_sizing_rejects_height_only():
+    import click
+
+    from upscaler.job_prep import validate_sizing
+
+    cfg = UpscaleConfig(height=100)
+    with pytest.raises(click.UsageError, match="width and height"):
+        validate_sizing(cfg)
+
+
+def test_batch_continues_after_one_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    src_dir = tmp_path / "in"
+    dst_dir = tmp_path / "out"
+    src_dir.mkdir()
+    Image.fromarray(np.zeros((8, 8, 3), dtype=np.uint8)).save(src_dir / "a.png")
+    Image.fromarray(np.zeros((8, 8, 3), dtype=np.uint8)).save(src_dir / "b.png")
+
+    from upscaler import cli as cli_mod
+
+    calls = {"n": 0}
+    real_execute = cli_mod.execute
+
+    def flaky(cfg):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("boom")
+        return real_execute(cfg)
+
+    monkeypatch.setattr(cli_mod, "execute", flaky)
+    result = CliRunner().invoke(
+        cli,
+        ["batch", str(src_dir), str(dst_dir), "--algorithm", "nearest", "--scale", "2", "-q"],
+    )
+    assert calls["n"] == 2
+    assert result.exit_code != 0
+    assert "boom" in result.output

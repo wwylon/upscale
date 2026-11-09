@@ -10,8 +10,10 @@ from typing import Any
 class TargetPreset:
     id: str
     label: str
-    target_size: int
+    target_size: int | None = None
     description: str = ""
+    width: int | None = None
+    height: int | None = None
 
 
 @dataclass(frozen=True)
@@ -26,6 +28,35 @@ TARGET_PRESETS: dict[str, TargetPreset] = {
     "fhd": TargetPreset("fhd", "Full HD long edge", 1920, "1080p-class width/height cap"),
     "4k": TargetPreset("4k", "4K UHD long edge", 3840, "Consumer 4K display target"),
     "print": TargetPreset("print", "Large print long edge", 6000, "Poster / print export"),
+    # ISO A4 210×297 mm and A3 297×420 mm at 300 DPI, rounded to whole pixels.
+    "a4_300": TargetPreset(
+        "a4_300",
+        "A4 at 300 DPI",
+        description="ISO A4 portrait, 210×297 mm at 300 DPI",
+        width=2480,
+        height=3508,
+    ),
+    "a3_300": TargetPreset(
+        "a3_300",
+        "A3 at 300 DPI",
+        description="ISO A3 portrait, 297×420 mm at 300 DPI",
+        width=3508,
+        height=4961,
+    ),
+    "social_square": TargetPreset(
+        "social_square",
+        "Social square",
+        description="Square post",
+        width=1080,
+        height=1080,
+    ),
+    "social_link": TargetPreset(
+        "social_link",
+        "Social link preview",
+        description="Open Graph / link card",
+        width=1200,
+        height=630,
+    ),
 }
 
 OPTION_PRESETS: dict[str, OptionPreset] = {
@@ -53,10 +84,26 @@ OPTION_PRESETS: dict[str, OptionPreset] = {
 }
 
 
+def _target_settings(preset: TargetPreset) -> dict[str, Any]:
+    settings: dict[str, Any] = {}
+    if preset.target_size is not None:
+        settings["target_size"] = preset.target_size
+    if preset.width is not None:
+        settings["width"] = preset.width
+    if preset.height is not None:
+        settings["height"] = preset.height
+    return settings
+
+
 def list_presets() -> dict[str, Any]:
     return {
         "targets": [
-            {"id": p.id, "label": p.label, "target_size": p.target_size, "description": p.description}
+            {
+                "id": p.id,
+                "label": p.label,
+                "description": p.description,
+                **_target_settings(p),
+            }
             for p in TARGET_PRESETS.values()
         ],
         "options": [

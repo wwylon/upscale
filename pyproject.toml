@@ -4,12 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "upscaler"
-version = "0.3.0"
-description = "AI image upscaler — chained Real-ESRGAN with feather-blended tiles"
+version = "0.4.0"
+description = "Local AI image upscaler: chained Real-ESRGAN passes to any scale, seam-free feather-blended tiles"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "upscale" }]
+keywords = ["image-upscaler", "super-resolution", "real-esrgan", "upscaling", "pytorch", "onnx", "mcp", "cli"]
 dependencies = [
     "torch>=2.0",
     "torchvision",
@@ -69,11 +70,15 @@ target-version = "py310"
 
 [tool.ruff.lint]
 # Classic pyflakes + pycodestyle errors (keeps verify/CI stable across ruff minors)
-select = ["E4", "E7", "E9", "F"]
+select = ["E4", "E7", "E9", "F", "I", "B"]
 ignore = [
     "E402",  # lazy/optional imports inside functions are intentional
     "E742",  # single-letter type names in generics (e.g. I for Image)
 ]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI / Gradio require these calls in parameter defaults.
+extend-immutable-calls = ["fastapi.File", "fastapi.Form", "gradio.Progress"]
 
 [tool.mypy]
 python_version = "3.11"

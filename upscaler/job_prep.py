@@ -50,11 +50,19 @@ class PreparedJob:
     log: Callable[[str], None]
 
 
+# Soft cap on output pixels for a single job (≈ 200 megapixels).
+MAX_OUTPUT_PIXELS = 200_000_000
+
+
 def validate_sizing(cfg: UpscaleConfig) -> None:
-    sized = sum(x is not None for x in (cfg.scale, cfg.target_size, cfg.width))
     if cfg.scale is not None and cfg.target_size is not None:
         raise click.UsageError("Specify --scale or --target-size, not both.")
-    if sized == 0 and cfg.height is None:
+    has_scale = cfg.scale is not None
+    has_target = cfg.target_size is not None
+    has_wh = cfg.width is not None and cfg.height is not None
+    if (cfg.width is None) ^ (cfg.height is None):
+        raise click.UsageError("Specify both width and height, or neither.")
+    if not (has_scale or has_target or has_wh):
         raise click.UsageError("Specify --scale, --target-size, or width×height.")
 
 
@@ -65,21 +73,36 @@ def resolve_scale_and_targets(
     scale = cfg.scale
     if cfg.width is not None and cfg.height is not None:
         scale = max(cfg.width / content_w, cfg.height / content_h)
-        return scale, int(cfg.width), int(cfg.height)
-    if cfg.target_size is not None:
+        tw, th = int(cfg.width), int(cfg.height)
+    elif cfg.target_size is not None:
         scale = cfg.target_size / max(content_h, content_w)
-    assert scale is not None
-    if scale <= 0:
+        tw = round(content_w * scale)
+        th = round(content_h * scale)
+    else:
+        assert scale is not None
+        tw = round(content_w * scale)
+        th = round(content_h * scale)
+    if scale is None or scale <= 0:
         raise click.UsageError("Scale must be positive.")
-    tw = round(content_w * scale)
-    th = round(content_h * scale)
-    return scale, tw, th
+    if tw <= 0 or th <= 0:
+        raise click.UsageError("Output dimensions must be positive.")
+    if tw * th > MAX_OUTPUT_PIXELS:
+        raise click.UsageError(
+            f"Output {tw}×{th} exceeds the {MAX_OUTPUT_PIXELS:,} pixel budget."
+        )
+    return float(scale), tw, th
 
 
 def clamp_overlap(overlap: int, tile: int) -> int:
+    overlap = max(0, int(overlap))
     if overlap >= tile // 2:
         return max(0, tile // 4)
     return overlap
+
+
+def scaled_size(width: int, height: int, scale: float) -> tuple[int, int]:
+    """Rounded (w, h) after multiplying by scale."""
+    return round(width * scale), round(height * scale)
 
 
 def prepare_job(
@@ -103,7 +126,12 @@ def prepare_job(
 
     if cfg.crop is not None:
         x, y, cw, ch = cfg.crop
-        x2, y2 = min(W, x + cw), min(H, y + ch)
+        x = max(0, int(x))
+        y = max(0, int(y))
+        x2 = min(W, x + max(0, int(cw)))
+        y2 = min(H, y + max(0, int(ch)))
+        if x2 <= x or y2 <= y:
+            raise click.UsageError("Crop rectangle is empty or outside the image.")
         img = img[y:y2, x:x2].copy()
         if alpha is not None:
             alpha = alpha[y:y2, x:x2].copy()
@@ -127,9 +155,7 @@ def prepare_job(
         img = wrap_seamless(img, pad)
         # Keep alpha geometry aligned with RGB when SR-alpha is used.
         if alpha is not None:
-            alpha = wrap_seamless(
-                np.stack([alpha, alpha, alpha], axis=-1), pad
-            )[:, :, 0]
+            alpha = wrap_seamless(alpha, pad)
 
     return PreparedJob(
         cfg=cfg,
@@ -150,15 +176,31 @@ def prepare_job(
     )
 
 
+def seamless_unwrap_margins(
+    result: np.ndarray, content_w: int, content_h: int, pad: int
+) -> tuple[int, int]:
+    """Output-space pad margins (pad_y, pad_x) for non-integer scales too."""
+    if pad <= 0:
+        return 0, 0
+    padded_w = content_w + 2 * pad
+    padded_h = content_h + 2 * pad
+    py = int(round(pad * result.shape[0] / max(padded_h, 1)))
+    px = int(round(pad * result.shape[1] / max(padded_w, 1)))
+    return max(0, py), max(0, px)
+
+
 def seamless_unwrap_scale(
     result: np.ndarray, content_w: int, content_h: int, pad: int
 ) -> int:
-    """Integer unwrap factor: output growth relative to padded input size."""
-    padded_w = content_w + 2 * pad
-    padded_h = content_h + 2 * pad
-    sx = max(1, int(round(result.shape[1] / max(padded_w, 1))))
-    sy = max(1, int(round(result.shape[0] / max(padded_h, 1))))
-    return max(sx, sy)
+    """Backward-compatible integer factor (max of axis ratios, rounded).
+
+    Prefer :func:`seamless_unwrap_margins` for correct non-integer crops.
+    """
+    py, px = seamless_unwrap_margins(result, content_w, content_h, pad)
+    if pad <= 0:
+        return 1
+    # Approximate factor for callers still using unwrap_seamless(..., scale=).
+    return max(1, int(round(max(py, px) / max(pad, 1))))
 
 
 def apply_strength(
@@ -190,11 +232,12 @@ def finalize_result(
     """Unwrap seamless → strength → post-filters → exact size → save."""
     cfg = prep.cfg
     pad = prep.pad
+    margins: tuple[int, int] | None = None
     if pad:
-        factor = seamless_unwrap_scale(
+        margins = seamless_unwrap_margins(
             result, prep.content_w, prep.content_h, pad
         )
-        result = unwrap_seamless(result, pad, factor)
+        result = unwrap_seamless(result, pad, margins=margins)
 
     # Exact W×H (or scale-derived targets)
     if result.shape[1] != prep.target_w or result.shape[0] != prep.target_h:
@@ -210,26 +253,30 @@ def finalize_result(
 
     if out_alpha is None:
         out_alpha = prep.alpha
-    if (
-        out_alpha is not None
-        and prep.original_mode in ("RGBA", "LA")
-        and (
-            out_alpha.shape[0] != result.shape[0]
-            or out_alpha.shape[1] != result.shape[1]
-        )
-    ):
-        from PIL import Image
-
+    if out_alpha is not None and prep.original_mode in ("RGBA", "LA"):
         a = np.asarray(out_alpha)
         if a.ndim == 3:
             a = a[:, :, 0]
         a = np.ascontiguousarray(a, dtype=np.uint8)
-        out_alpha = np.array(
-            Image.fromarray(a, mode="L").resize(
-                (result.shape[1], result.shape[0]), Image.Resampling.LANCZOS
-            ),
-            dtype=np.uint8,
-        )
+        if pad:
+            padded_h = prep.content_h + 2 * pad
+            padded_w = prep.content_w + 2 * pad
+            if a.shape[0] == padded_h and a.shape[1] == padded_w:
+                # Still at padded input resolution (classical / Lanczos alpha).
+                a = unwrap_seamless(a, pad, margins=(pad, pad))
+            elif margins is not None:
+                # SR'd to padded output size — use the same margins as RGB.
+                a = unwrap_seamless(a, pad, margins=margins)
+        if a.shape[0] != result.shape[0] or a.shape[1] != result.shape[1]:
+            from PIL import Image
+
+            a = np.array(
+                Image.fromarray(a, mode="L").resize(
+                    (result.shape[1], result.shape[0]), Image.Resampling.LANCZOS
+                ),
+                dtype=np.uint8,
+            )
+        out_alpha = a
 
     if on_progress:
         on_progress({"type": "writing", "pct": 0.99, "message": "Writing output…"})

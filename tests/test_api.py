@@ -8,8 +8,8 @@ from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
-
 from png_fixtures import TINY_PNG
+
 from upscaler.server import app
 
 
@@ -53,6 +53,8 @@ def test_api_models(client: TestClient):
     names = {m["name"] for m in models}
     assert "RealESRGAN_x4plus" in names
     assert all("status" in m for m in models)
+    by_name = {m["name"]: m for m in models}
+    assert by_name["RealESRGAN_x4plus"]["license"] == "BSD-3-Clause-like"
 
 
 def test_api_algorithms(client: TestClient):
@@ -195,9 +197,8 @@ def test_api_estimate(client: TestClient):
 
 
 def test_api_decode_preview_tga(client: TestClient, tmp_path: Path):
-    from PIL import Image
-
     import numpy as np
+    from PIL import Image
 
     tga = tmp_path / "sample.tga"
     Image.fromarray(np.full((20, 24, 3), 40, dtype=np.uint8), mode="RGB").save(tga)
@@ -222,16 +223,45 @@ def test_api_rejects_svg(client: TestClient):
     assert "vector" in r.text.lower() or "svg" in r.text.lower()
 
 
-def test_api_models_add(client: TestClient, tmp_path: Path):
-    fake = tmp_path / "custom.safetensors"
+def test_api_models_add(client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    import upscaler.api.models_routes as models_routes
+    from upscaler import models as models_mod
+    from upscaler import server as server_mod
+
+    wdir = tmp_path / "weights"
+    wdir.mkdir()
+    monkeypatch.setattr(models_mod, "DEFAULT_WEIGHTS_DIR", wdir)
+    monkeypatch.setattr(server_mod, "DEFAULT_WEIGHTS_DIR", wdir)
+    monkeypatch.setattr(models_routes, "DEFAULT_WEIGHTS_DIR", wdir)
+    fake = wdir / "custom.safetensors"
     fake.write_bytes(b"x" * 16)
     r = client.post(
         "/api/models",
         json={"name": "test-custom-model", "path": str(fake), "scale": 4},
     )
-    assert r.status_code == 200
+    assert r.status_code == 200, r.text
     names = {m["name"] for m in client.get("/api/models").json()}
     assert "test-custom-model" in names
+    # Must not leak into the repo models/ registry.
+    repo_reg = Path(__file__).resolve().parents[1] / "models" / "registry.json"
+    if repo_reg.is_file():
+        assert "test-custom-model" not in repo_reg.read_text(encoding="utf-8")
+
+
+def test_api_models_add_rejects_builtin_name(client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    from upscaler import models as models_mod
+
+    wdir = tmp_path / "weights"
+    wdir.mkdir()
+    monkeypatch.setattr(models_mod, "DEFAULT_WEIGHTS_DIR", wdir)
+    fake = wdir / "shadow.pth"
+    fake.write_bytes(b"x" * 16)
+    r = client.post(
+        "/api/models",
+        json={"name": "RealESRGAN_x4plus", "path": str(fake), "scale": 4},
+    )
+    assert r.status_code == 400
+    assert "built-in" in r.text.lower() or "shadow" in r.text.lower()
 
 
 def test_root_redirects_to_locale(client: TestClient):
@@ -454,4 +484,40 @@ def test_sse_pause_resume_cancel_sequence(client: TestClient, tmp_path: Path):
         assert "resumed" in types
         assert "cancelled" in types
         assert types.index("resumed") < types.index("cancelled")
+
+
+def test_job_quality_seam_and_diff(client: TestClient, tmp_path: Path):
+    import numpy as np
+    from PIL import Image
+
+    out = tmp_path / "out.png"
+    Image.fromarray(np.full((8, 8, 3), 40, dtype=np.uint8)).save(out)
+
+    def fake_execute(cfg, **kwargs):
+        if kwargs.get("on_progress"):
+            kwargs["on_progress"]({"type": "done", "pct": 1.0, "message": "done"})
+        return out
+
+    with patch("upscaler.server.execute", side_effect=fake_execute):
+        r = client.post(
+            "/api/jobs",
+            files={"file": ("test.png", TINY_PNG, "image/png")},
+            data={"settings": '{"scale": 2, "algorithm": "nearest"}'},
+        )
+    assert r.status_code == 200, r.text
+    job_id = r.json()["id"]
+    for _ in range(100):
+        if client.get(f"/api/jobs/{job_id}/result").status_code == 200:
+            break
+        time.sleep(0.05)
+    seam = client.get(f"/api/jobs/{job_id}/quality", params={"mode": "seam"})
+    assert seam.status_code == 200, seam.text
+    assert "seam_score" in seam.json()
+    diff = client.get(f"/api/jobs/{job_id}/quality", params={"mode": "diff"})
+    assert diff.status_code == 200, diff.text
+    body = diff.json()
+    assert "psnr" in body["metrics"]
+    assert body["png"] == "quality_diff.png"
+    bad = client.get(f"/api/jobs/{job_id}/quality", params={"mode": "nope"})
+    assert bad.status_code == 400
 

@@ -6,7 +6,8 @@
 ; Output: desktop\Output\Upscale-Setup-cpu.exe
 
 #define MyAppName "Upscale"
-#define MyAppVersion "0.3.0"
+; AppVersion is hardcoded — keep it equal to [project].version in pyproject.toml.
+#define MyAppVersion "0.4.0"
 #define MyAppPublisher "Upscale"
 #define MyAppExeName "Upscale.exe"
 

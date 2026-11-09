@@ -1146,9 +1146,18 @@
   var REACT_DOM_SRI = "sha384-gTGxhz21lVGYNMcdJOyq01Edg0jhn/c22nsx0kyqP0TxaV5WVdsSH1fSDUf5YJj1";
   var BABEL_URL = "https://unpkg.com/@babel/standalone@7.29.0/babel.min.js";
   var BABEL_SRI = "sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y";
+  // Prefer vendored copies so desktop / offline boots without CDN.
+  if (!window.__resources) {
+    window.__resources = {
+      [REACT_URL]: "/ui/vendor/react.production.min.js",
+      [REACT_DOM_URL]: "/ui/vendor/react-dom.production.min.js",
+      [BABEL_URL]: "/ui/vendor/babel.min.js"
+    };
+  }
   function cdnScriptFor(url, sri) {
     const res = window.__resources;
     const v = res ? res[url] : void 0;
+    // Local vendor paths omit integrity (file may be refreshed without SRI update).
     return typeof v === "string" && v ? { src: v } : { src: url, integrity: sri };
   }
 

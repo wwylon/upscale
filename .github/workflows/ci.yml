@@ -22,8 +22,8 @@ jobs:
           pip install -e ".[dev,server,mcp]"
       - name: Ruff
         run: ruff check upscaler tests
-      - name: Mypy (schema + job_prep)
-        run: mypy --follow-imports=silent upscaler/schema.py upscaler/job_prep.py
+      - name: Mypy
+        run: mypy --follow-imports=silent upscaler/schema.py upscaler/job_prep.py upscaler/config.py upscaler/naming.py upscaler/api
       - name: CLI help
         run: upscale --help && upscale models list
       - name: Pytest

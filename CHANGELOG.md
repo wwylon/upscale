@@ -6,9 +6,22 @@ this project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-09
+
 ### Added
 
-- House `publish.manifest.yaml` and dual-tree export readiness for the public GitHub mirror.
+- Web UI localization: every string keyed in `locales/`, language picker, Polish, Chinese and Arabic layouts (including right-to-left).
+- Landing site (`site/`) deployed with GitHub Pages, `llms.txt`, and a shorter README.
+- `uv.lock` for reproducible installs (`uv sync --locked`).
+
+### Fixed
+
+- Library model listing, resume gating, and Test-tab scale controls in the web UI.
+- Job-safety and correctness fixes from a full review of the job API and tiling path.
+
+### Changed
+
+- README slimmed to install and first run; CLI and desktop details live in `docs/`.
 
 ## [0.3.0] - 2026-10-31
 

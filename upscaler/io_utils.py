@@ -9,6 +9,9 @@ from typing import Any
 import numpy as np
 from PIL import Image
 
+# Auto format switches from PNG to TIFF when the long edge exceeds this (px).
+LONG_EDGE_TIFF_THRESHOLD = 20_000
+
 # Formats the product accepts for JobSettings / CLI
 OUTPUT_FORMATS = (
     "auto",
@@ -111,9 +114,44 @@ def load_rgba(path: Path) -> tuple[np.ndarray, np.ndarray | None, str]:
     return rgb, alpha, mode
 
 
+def _strip_orientation_exif(exif_bytes: bytes | None) -> bytes | None:
+    """Drop Orientation (tag 0x0112) after we have transposed the pixels."""
+    if not exif_bytes:
+        return None
+    try:
+        from PIL import Image
+
+        im = Image.new("RGB", (1, 1))
+        im.info["exif"] = exif_bytes
+        exif = im.getexif()
+        if 0x0112 in exif:
+            del exif[0x0112]
+        data = exif.tobytes()
+        return data or None
+    except Exception:  # noqa: BLE001
+        return exif_bytes
+
+
+def _fill_transparent_rgb(rgb: np.ndarray, alpha: np.ndarray) -> np.ndarray:
+    """Replace RGB under fully transparent pixels with nearest opaque colour."""
+    if alpha is None or rgb is None:
+        return rgb
+    mask = alpha == 0
+    if not np.any(mask) or np.all(mask):
+        return rgb
+    opaque = ~mask
+    # Cheap fill: use mean of opaque pixels (avoids dark SR fringes on A=0).
+    fill = rgb[opaque].mean(axis=0).astype(np.uint8)
+    out = rgb.copy()
+    out[mask] = fill
+    return out
+
+
 def _pil_to_rgba(
     img: Image.Image, *, meta: ImageMeta | None = None
 ) -> tuple[np.ndarray, np.ndarray | None, str, ImageMeta]:
+    from PIL import ImageOps
+
     original_mode = img.mode
     meta = meta or ImageMeta()
     try:
@@ -124,6 +162,12 @@ def _pil_to_rgba(
             exif_obj = img.getexif()
             if exif_obj:
                 meta.exif = exif_obj.tobytes()
+    except Exception:  # noqa: BLE001
+        pass
+    # Apply EXIF orientation to pixels, then drop the tag so saves stay upright.
+    try:
+        img = ImageOps.exif_transpose(img)
+        meta.exif = _strip_orientation_exif(meta.exif)
     except Exception:  # noqa: BLE001
         pass
     icc = img.info.get("icc_profile")
@@ -139,6 +183,7 @@ def _pil_to_rgba(
     if img.mode in ("RGBA", "LA"):
         alpha = np.array(img.split()[-1], dtype=np.uint8)
         rgb = np.array(img.convert("RGB"), dtype=np.uint8)
+        rgb = _fill_transparent_rgb(rgb, alpha)
         return rgb, alpha, "RGBA" if img.mode == "RGBA" else original_mode, meta
 
     if img.mode != "RGB":
@@ -152,25 +197,52 @@ def _load_via_tifffile(
 ) -> tuple[np.ndarray, np.ndarray | None, str, ImageMeta]:
     import tifffile
 
-    arr = tifffile.imread(str(path))
+    with tifffile.TiffFile(str(path)) as tif:
+        page = tif.pages[0]
+        arr = page.asarray()
+        planar = getattr(page, "planarconfig", None)
+        # tifffile: 1=chunky/contiguous, 2=planar. Fall back carefully.
+        is_planar = planar == 2
     if arr.ndim == 2:
         rgb = np.stack([arr, arr, arr], axis=-1)
         if rgb.dtype != np.uint8:
-            rgb = np.clip(rgb, 0, 255).astype(np.uint8)
+            if np.issubdtype(rgb.dtype, np.floating):
+                mx = float(np.nanmax(rgb)) if rgb.size else 0.0
+                if mx <= 1.0 + 1e-6:
+                    rgb = (rgb * 255.0).clip(0, 255).astype(np.uint8)
+                else:
+                    rgb = np.clip(rgb, 0, 255).astype(np.uint8)
+            else:
+                rgb = np.clip(rgb, 0, 255).astype(np.uint8)
         return rgb, None, "L", ImageMeta()
-    if arr.ndim == 3 and arr.shape[0] in (3, 4) and arr.shape[0] < arr.shape[-1]:
-        # planar CHW → HWC
+    if arr.ndim == 3 and is_planar and arr.shape[0] in (3, 4):
+        arr = np.moveaxis(arr, 0, -1)
+    elif (
+        arr.ndim == 3
+        and arr.shape[0] in (3, 4)
+        and arr.shape[0] < arr.shape[1]
+        and arr.shape[0] < arr.shape[2]
+        and planar is None
+    ):
+        # Heuristic only when IFD lacks planarconfig and first axis is tiny.
         arr = np.moveaxis(arr, 0, -1)
     if arr.ndim != 3:
         raise ValueError(f"Unsupported TIFF shape {arr.shape}")
     if arr.dtype != np.uint8:
-        info = np.iinfo(arr.dtype) if np.issubdtype(arr.dtype, np.integer) else None
-        if info is not None and info.max > 0:
-            arr = (arr.astype(np.float32) / float(info.max) * 255.0).clip(0, 255).astype(
-                np.uint8
-            )
+        if np.issubdtype(arr.dtype, np.floating):
+            mx = float(np.nanmax(arr)) if arr.size else 0.0
+            if mx <= 1.0 + 1e-6:
+                arr = (arr.astype(np.float32) * 255.0).clip(0, 255).astype(np.uint8)
+            else:
+                arr = np.clip(arr, 0, 255).astype(np.uint8)
         else:
-            arr = np.clip(arr, 0, 255).astype(np.uint8)
+            info = np.iinfo(arr.dtype) if np.issubdtype(arr.dtype, np.integer) else None
+            if info is not None and info.max > 0:
+                arr = (
+                    arr.astype(np.float32) / float(info.max) * 255.0
+                ).clip(0, 255).astype(np.uint8)
+            else:
+                arr = np.clip(arr, 0, 255).astype(np.uint8)
     if arr.shape[2] >= 4:
         return arr[:, :, :3].copy(), arr[:, :, 3].copy(), "RGBA", ImageMeta()
     if arr.shape[2] == 3:
@@ -240,16 +312,6 @@ def load_rgba_with_meta(
     raise ValueError(f"Cannot load image {path.name}: {detail}")
 
 
-def load_image(path: Path) -> tuple[np.ndarray, str]:
-    rgb, _alpha, mode = load_rgba(path)
-    return rgb, mode
-
-
-def get_alpha(path: Path) -> np.ndarray | None:
-    _rgb, alpha, _mode = load_rgba(path)
-    return alpha
-
-
 def _normalize_fmt(fmt: str, long_edge: int) -> str:
     use = (fmt or "auto").lower().replace("-", "_")
     if use in ("jpg",):
@@ -261,7 +323,7 @@ def _normalize_fmt(fmt: str, long_edge: int) -> str:
     if use == "exif_jpeg":
         use = "jpeg_exif"
     if use == "auto":
-        use = "tiff" if long_edge > 20000 else "png"
+        use = "tiff" if long_edge > LONG_EDGE_TIFF_THRESHOLD else "png"
     return use
 
 
@@ -291,7 +353,7 @@ def save_image(
     meta: ImageMeta | None = None,
 ) -> Path:
     """
-    Save upscaled image. Auto uses TIFF when long edge > 20000px.
+    Save upscaled image. Auto uses TIFF when the long edge exceeds LONG_EDGE_TIFF_THRESHOLD.
 
     Formats: auto|png|jpeg|jpeg_exif|webp|tiff|bmp|tga|jp2|psd|psb
     TIFF compression: lzw|jpeg|none|deflate|zstd
@@ -464,33 +526,25 @@ def _save_jp2(pil: Image.Image, path: Path, *, quality: int) -> None:
 
 
 def _save_psd(pil: Image.Image, path: Path, *, psb: bool) -> None:
-    """Flattened single-layer PSD/PSB. Prefers psd-tools; else minimal writer."""
+    """Flattened single-layer PSD/PSB via the minimal writer."""
     rgb = pil.convert("RGB")
-    try:
-        _save_psd_psdtools(rgb, path, psb=psb)
-        return
-    except ImportError:
-        pass
-    except Exception:
-        pass
     _save_psd_minimal(np.array(rgb, dtype=np.uint8), path, psb=psb)
 
 
-def _save_psd_psdtools(pil: Image.Image, path: Path, *, psb: bool) -> None:
-    """Optional path — currently unused; minimal writer handles flat PSD/PSB."""
-    raise ImportError("use minimal writer")
-
-
 def _save_psd_minimal(rgb: np.ndarray, path: Path, *, psb: bool) -> None:
-    """Write a minimal flattened 8-bit RGB PSD/PSB (no layers)."""
+    """Write a minimal flattened 8-bit RGB PSD/PSB (no layers).
+
+    PSD (version 1) is limited to 30000 px. PSB (version 2) allows up to 300000 px.
+    """
     import struct
 
     h, w = rgb.shape[:2]
-    if psb and max(h, w) > 30000:
-        # PSB allows larger canvases; still use 4-byte header dims (Adobe max 300000)
-        pass
-    if max(h, w) > 300_000:
-        raise ValueError("Image exceeds Photoshop dimension limit (300000 px)")
+    edge = max(h, w)
+    if psb:
+        if edge > 300_000:
+            raise ValueError("Image exceeds Photoshop PSB dimension limit (300000 px)")
+    elif edge > 30_000:
+        raise ValueError("PSD exceeds 30000 px; use PSB for larger images")
     version = 2 if psb else 1
     # File header (26 bytes): 8BPS, version, reserved(6), channels, height, width, depth, mode
     header = b"8BPS" + struct.pack(">H", version)

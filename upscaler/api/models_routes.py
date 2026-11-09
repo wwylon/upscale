@@ -50,17 +50,24 @@ async def api_models_upload(
 ) -> dict[str, Any]:
     """Accept weights upload into the models directory and register it."""
 
+    import hashlib
+
+    from upscaler.models import MODELS
+
     raw_name = (name or Path(file.filename or "model").stem).strip()
     try:
         validate_model_name(raw_name)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
+    if raw_name in MODELS:
+        raise HTTPException(400, f"Refusing to shadow built-in model {raw_name!r}")
     suffix = Path(file.filename or "model.pth").suffix.lower() or ".pth"
     if suffix not in (".pth", ".pt", ".safetensors", ".onnx"):
         raise HTTPException(400, f"Unsupported weights extension: {suffix}")
     content = await file.read()
     if len(content) > D.MAX_UPLOAD_BYTES:
         raise HTTPException(413, f"Upload exceeds limit of {D.MAX_UPLOAD_BYTES} bytes")
+    digest = hashlib.sha256(content).hexdigest()
     DEFAULT_WEIGHTS_DIR.mkdir(parents=True, exist_ok=True)
     dest = DEFAULT_WEIGHTS_DIR / f"{raw_name}{suffix}"
     dest.write_bytes(content)
@@ -69,6 +76,7 @@ async def api_models_upload(
             raw_name,
             path=str(dest),
             scale=int(scale) if 1 <= int(scale) <= 8 else 4,
+            sha256=digest,
             description=description or f"Uploaded {file.filename}",
         )
     except (ValueError, FileNotFoundError) as exc:
@@ -79,6 +87,7 @@ async def api_models_upload(
         "path": str(dest),
         "entry": entry,
         "status": model_status(raw_name),
+        "sha256": digest,
     }
 
 @router.post("/api/models/{name}/download")

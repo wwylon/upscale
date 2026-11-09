@@ -13,11 +13,12 @@ BUILTIN_ALGORITHMS = (
     "lanczos3",
 )
 
+# OpenCV and Pillow only expose one Lanczos kernel (≈3–4 lobe). lanczos2 is
+# an alias of lanczos3 so the public names do not promise a difference.
 _CV_MAP = {
     "nearest": "INTER_NEAREST",
     "bilinear": "INTER_LINEAR",
     "bicubic": "INTER_CUBIC",
-    # OpenCV Lanczos is 4-lobe; use for both lanczos2/3 approximations
     "lanczos2": "INTER_LANCZOS4",
     "lanczos3": "INTER_LANCZOS4",
 }
@@ -26,7 +27,7 @@ _PIL_MAP = {
     "nearest": Image.Resampling.NEAREST,
     "bilinear": Image.Resampling.BILINEAR,
     "bicubic": Image.Resampling.BICUBIC,
-    "lanczos2": Image.Resampling.LANCZOS,  # Pillow Lanczos a≈3
+    "lanczos2": Image.Resampling.LANCZOS,
     "lanczos3": Image.Resampling.LANCZOS,
 }
 

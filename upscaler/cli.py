@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shlex
 from pathlib import Path
 
 import click
@@ -101,7 +102,7 @@ def settings_to_cli(cfg: UpscaleConfig) -> str:
         on_ex = getattr(cfg.name_pattern, "on_exists", None)
         if on_ex is not None and str(on_ex.value if hasattr(on_ex, "value") else on_ex) != "number":
             parts += ["--on-exists", str(on_ex.value if hasattr(on_ex, "value") else on_ex)]
-    return " ".join(parts)
+    return " ".join(shlex.quote(part) for part in parts)
 
 
 def _common_options(fn):
@@ -373,6 +374,7 @@ def batch_cmd(input_dir: Path, output_dir: Path, **kw) -> None:
     if not unique:
         raise click.UsageError(f"No images found in {input_dir}")
 
+    errors: list[str] = []
     for src in unique:
         cfg = _cfg_from_opts(src, output_dir / src.name, **kw)
         # Apply naming pattern into output_dir
@@ -390,7 +392,14 @@ def batch_cmd(input_dir: Path, output_dir: Path, **kw) -> None:
                 continue
             cfg.output = resolved
         click.echo(f"=== {src.name} ===")
-        execute(cfg)
+        try:
+            execute(cfg)
+        except Exception as exc:  # noqa: BLE001 — one bad file must not abort the batch
+            errors.append(f"{src.name}: {exc}")
+            click.echo(f"Failed {src.name}: {exc}", err=True)
+    if errors:
+        click.echo(f"Batch finished with {len(errors)} failure(s).", err=True)
+        raise click.exceptions.Exit(1)
 
 
 @cli.command("compare")
@@ -563,7 +572,30 @@ def mcp_cmd() -> None:
 @click.option("--share", is_flag=True, default=False)
 def ui_cmd(host: str, port: int, share: bool) -> None:
     """Launch Gradio UI (legacy; prefer `upscale serve`)."""
+    import ipaddress
+    import os
+
     click.echo("Note: prefer `upscale serve` for the design UI.", err=True)
+    allow_remote = os.environ.get("UPSCALE_ALLOW_REMOTE", "").strip() in (
+        "1",
+        "true",
+        "yes",
+    )
+    loopback = False
+    try:
+        loopback = ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        loopback = host in ("localhost",)
+    if share and not allow_remote:
+        raise click.ClickException(
+            "Refusing --share without UPSCALE_ALLOW_REMOTE=1 "
+            "(Gradio share exposes an unauthenticated UI)."
+        )
+    if not loopback and not allow_remote:
+        raise click.ClickException(
+            f"Refusing to bind non-loopback host {host!r}. "
+            "Set UPSCALE_ALLOW_REMOTE=1 to allow."
+        )
     try:
         from .web import launch
     except ImportError as exc:

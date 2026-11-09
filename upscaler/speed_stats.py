@@ -23,8 +23,19 @@ def speed_stats_path() -> Path:
 
 
 def normalize_device(device: str | None) -> str:
+    """Map device strings to estimate/speed-table keys.
+
+    ``auto`` follows the same CUDA-preferring convention as ``estimate_time_seconds``.
+    """
     d = (device or "cpu").lower()
     if d in ("auto",):
+        try:
+            import torch
+
+            if torch.cuda.is_available():
+                return "cuda"
+        except Exception:  # noqa: BLE001
+            pass
         return "cpu"
     if "cuda" in d or "directml" in d:
         return "cuda"
@@ -42,10 +53,20 @@ def work_megapixels(
     *,
     model_scale: int = 4,
     algorithm: str | None = None,
+    tile: int | None = None,
+    overlap: int = 0,
 ) -> float:
-    """Same work units used by ``estimate_time_seconds`` (and recording)."""
+    """Same work units used by ``estimate_time_seconds`` (and recording).
+
+    When tile/overlap are known, inflate by ``(tile/(tile-overlap))**2`` to
+    account for feathered overlap work.
+    """
     if scale <= 1.0 and not algorithm:
         return 0.0
+    overlap_factor = 1.0
+    if tile is not None and tile > 0 and overlap > 0:
+        step = max(1, tile - overlap)
+        overlap_factor = (tile / step) ** 2
     if algorithm:
         # Classical is one resize; charge by output megapixels.
         return megapixels(max(1, round(src_w * scale)), max(1, round(src_h * scale)))
@@ -56,7 +77,7 @@ def work_megapixels(
     w, h = src_w, src_h
     ms = max(2, int(model_scale))
     for _ in range(passes):
-        work += megapixels(w, h)
+        work += megapixels(w, h) * overlap_factor
         w *= ms
         h *= ms
     return work

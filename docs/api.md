@@ -33,6 +33,7 @@ Bind is loopback by default. Non-loopback `--host` requires `UPSCALE_ALLOW_REMOT
 | GET | `/api/jobs/{id}/result` | Output file |
 | GET | `/api/jobs/{id}/preview` | Input thumbnail |
 | GET | `/api/jobs/{id}/display` | Result preview ≤4096 edge |
+| GET | `/api/jobs/{id}/quality` | `mode=seam` or `mode=diff` (Lanczos baseline; optional `quality_diff.png`) |
 | GET | `/api/jobs/{id}/passes/{n}` | Mid-pass preview |
 | POST | `/api/estimate` | Time / VRAM fit estimate |
 | GET | `/api/models` | Model catalog |

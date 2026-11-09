@@ -32,9 +32,10 @@ from .models import (
     model_status,
     registry_scale,
 )
-from .schema import FilterSettings, JobSettings, LANGUAGE_CATALOG, ModelInfo
+from .schema import LANGUAGE_CATALOG, FilterSettings, JobSettings, ModelInfo
 from .system import gather_system_info
 from .tiling import JobCancelled
+
 
 def _env_path(name: str, default: Path) -> Path:
     raw = __import__("os").environ.get(name)
@@ -73,7 +74,7 @@ if _models_override:
 
     _models_mod.DEFAULT_WEIGHTS_DIR = Path(_models_override)
 
-app = FastAPI(title="Upscale", version="0.3.0")
+app = FastAPI(title="Upscale", version="0.4.0")
 
 
 class JobState(str, Enum):
@@ -133,6 +134,28 @@ def _purge_expired_compare_jobs() -> None:
                 shutil.rmtree(run.dir, ignore_errors=True)
 
 
+def _purge_stale_job_dirs_on_disk() -> None:
+    """Delete job directories older than JOB_TTL_S that have no valid strip CK."""
+    import time
+
+    now = time.time()
+    if not JOBS_ROOT.is_dir():
+        return
+    for child in JOBS_ROOT.iterdir():
+        if not child.is_dir():
+            continue
+        try:
+            age = now - child.stat().st_mtime
+        except OSError:
+            continue
+        if age <= JOB_TTL_S:
+            continue
+        strip = child / "checkpoints" / "strip.json"
+        if strip.is_file():
+            continue
+        shutil.rmtree(child, ignore_errors=True)
+
+
 def _purge_expired_jobs() -> None:
     import time
 
@@ -176,10 +199,18 @@ class ExternalModelBody(BaseModel):
 
 
 def _ensure_worker() -> None:
+    """Start the single job worker if needed.
+
+    Safe to call while holding ``_jobs_lock``: the fast path returns without
+    re-entering the lock once the worker is up (avoids non-reentrant deadlock).
+    """
     global _worker_started
     if _worker_started:
         return
-    _worker_started = True
+    with _jobs_lock:
+        if _worker_started:
+            return
+        _worker_started = True
     t = threading.Thread(target=_worker_loop, name="upscale-job-worker", daemon=True)
     t.start()
 
@@ -370,18 +401,33 @@ def _run_job(job_id: str) -> None:
         _push_event(job, ev)
 
     try:
+        # Honor pause before acquiring the GPU lock so a paused queued job
+        # does not block compare / benchmark.
+        while job.pause_event.is_set():
+            if job.cancel_event.is_set():
+                raise JobCancelled("cancelled")
+            time.sleep(0.05)
         with _execute_lock:
+            if job.cancel_event.is_set():
+                raise JobCancelled("cancelled")
             actual = execute(cfg, on_progress=on_progress, echo=lambda _m: None)
+            # Clear mask cache while still holding the lock so compare cannot
+            # race make_tile_weight against OrderedDict.clear().
+            clear_mask_cache()
         job.output_path = actual
+        # Sidecar so /result finds the file after name_pattern renames.
+        try:
+            (job.job_dir / "output_name.txt").write_text(
+                actual.name, encoding="utf-8"
+            )
+        except OSError:
+            pass
         display_path = job.job_dir / "display.png"
         try:
             _make_preview(actual, display_path, max_edge=4096)
         except Exception:  # noqa: BLE001
-            try:
-                if actual.is_file():
-                    shutil.copy(actual, display_path)
-            except Exception:  # noqa: BLE001
-                pass
+            # Do not fall back to the full master (can be a huge TIFF/PSB).
+            pass
         job.state = JobState.done
         try:
             from .checkpoint import clear_strip_checkpoint
@@ -407,9 +453,8 @@ def _run_job(job_id: str) -> None:
     except Exception as exc:  # noqa: BLE001
         job.state = JobState.error
         job.error = str(exc)
-        _push_event(job, {"type": "error", "pct": 0, "message": str(exc)})
+        _push_event(job, {"type": "error", "pct": job.last_pct, "message": str(exc)})
     finally:
-        clear_mask_cache()
         _purge_expired_jobs()
 
 
@@ -424,8 +469,25 @@ def _worker_loop() -> None:
             _job_queue.task_done()
 
 
+def _model_tags(name: str, meta: dict) -> list[str]:
+    raw = meta.get("tags")
+    if isinstance(raw, list) and raw:
+        return [str(t) for t in raw]
+    if meta.get("external"):
+        return ["External"]
+    blob = f"{name} {meta.get('description', '')}".lower()
+    if any(k in blob for k in ("anime", "illustration", "video")):
+        return ["Anime"]
+    if any(k in blob for k in ("span", "fast", "ch48", "nomosuni_span")):
+        return ["Fast"]
+    return ["Photo"]
+
+
 def _model_info_list(weights_dir: Path | None = None) -> list[ModelInfo]:
+    from .models import prune_stale_external_models
+
     wdir = weights_dir or DEFAULT_WEIGHTS_DIR
+    prune_stale_external_models(wdir)
     catalog = all_models(wdir)
     out: list[ModelInfo] = []
     for name, meta in sorted(catalog.items()):
@@ -447,6 +509,8 @@ def _model_info_list(weights_dir: Path | None = None) -> list[ModelInfo]:
                 path=str(dest) if dest.exists() else meta.get("path"),
                 sha256=meta.get("sha256"),
                 url=meta.get("url"),
+                license=meta.get("license"),
+                tags=_model_tags(name, meta),
                 size_bytes=int(size_bytes) if size_bytes is not None else None,
             )
         )
@@ -754,6 +818,16 @@ def _safe_job_dir(job_id: str) -> Path:
 
 
 def _find_result_file(job_dir: Path) -> Path | None:
+    sidecar = job_dir / "output_name.txt"
+    if sidecar.is_file():
+        try:
+            name = sidecar.read_text(encoding="utf-8").strip()
+            if name and ".." not in name and "/" not in name and "\\" not in name:
+                p = job_dir / name
+                if p.is_file() and p.stat().st_size > 0:
+                    return p
+        except OSError:
+            pass
     preferred = (
         "result.png",
         "result.jpg",
@@ -769,9 +843,11 @@ def _find_result_file(job_dir: Path) -> Path | None:
     )
     for name in preferred:
         p = job_dir / name
-        if p.is_file():
+        if p.is_file() and p.stat().st_size > 0:
             return p
-    matches = sorted(p for p in job_dir.glob("result.*") if p.is_file())
+    matches = sorted(
+        p for p in job_dir.glob("result.*") if p.is_file() and p.stat().st_size > 0
+    )
     return matches[0] if matches else None
 
 
@@ -823,13 +899,17 @@ def _discard_bad_checkpoint(job_dir: Path) -> None:
 
 
 
-def _strip_checkpoint_info(job: JobRecord) -> dict[str, Any] | None:
+def _strip_checkpoint_info_from_dir(job_dir: Path) -> dict[str, Any] | None:
+    """Return resume metadata only when the strip checkpoint is actually usable."""
     from .checkpoint import load_strip_checkpoint
 
-    loaded = load_strip_checkpoint(job.job_dir)
+    loaded = load_strip_checkpoint(job_dir)
     if loaded is None:
         return None
     meta, _extras = loaded
+    # Zero flush means no finished bands — nothing useful to continue from.
+    if meta.flush_row <= 0 or meta.out_h <= 0 or meta.out_w <= 0:
+        return None
     return {
         "pass_index": meta.pass_index,
         "flush_row": meta.flush_row,
@@ -837,6 +917,10 @@ def _strip_checkpoint_info(job: JobRecord) -> dict[str, Any] | None:
         "out_w": meta.out_w,
         "pct_approx": round(meta.flush_row / max(meta.out_h, 1), 3),
     }
+
+
+def _strip_checkpoint_info(job: JobRecord) -> dict[str, Any] | None:
+    return _strip_checkpoint_info_from_dir(job.job_dir)
 
 
 
@@ -946,6 +1030,11 @@ def run_server(host: str = "127.0.0.1", port: int = 8787) -> None:
         )
 
     JOBS_ROOT.mkdir(parents=True, exist_ok=True)
+    # Drop stale job dirs left from a previous process (keep valid strip CKs).
+    try:
+        _purge_stale_job_dirs_on_disk()
+    except Exception:  # noqa: BLE001
+        pass
 
     # Windows consoles often leave uvicorn stuck after Ctrl+C (CUDA/native
     # threads). Force-exit so web.bat can be restarted without stop-web.bat.

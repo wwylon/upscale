@@ -1,0 +1,18 @@
+# upscale
+
+> Local AI image upscaler. Chains Real-ESRGAN (via spandrel) 4x passes to reach any target scale, with feather-blended overlapping tiles for seam-free output. CPU or NVIDIA GPU. Python package `upscaler`, console script `upscale`.
+
+## Docs
+
+- [README](https://github.com/wwylon/upscale/blob/main/README.md): install and quick start
+- [CLI reference](https://github.com/wwylon/upscale/blob/main/docs/cli.md)
+- [HTTP and MCP API](https://github.com/wwylon/upscale/blob/main/docs/api.md)
+- [Development](https://github.com/wwylon/upscale/blob/main/docs/develop.md)
+- [Agent notes](https://github.com/wwylon/upscale/blob/main/AGENTS.md)
+
+## Key facts
+
+- `upscale upscale IN OUT --scale N` or `--target-size PX`; `--cpu` forces CPU
+- `upscale serve` starts a local web UI and job API; `upscale mcp` runs MCP tools over stdio
+- Models download on first use and are hash-verified; no telemetry
+- License: MIT

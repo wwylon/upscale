@@ -29,6 +29,16 @@ def test_print_sizes():
     assert sizes[0].dpi == 72
 
 
+def test_auto_file_size_uses_tiff_threshold():
+    from upscaler.io_utils import LONG_EDGE_TIFF_THRESHOLD
+
+    edge = LONG_EDGE_TIFF_THRESHOLD + 1
+    assert estimate_file_size_bytes(edge, 10, "auto") == estimate_file_size_bytes(edge, 10, "tiff")
+    assert estimate_file_size_bytes(LONG_EDGE_TIFF_THRESHOLD, 10, "auto") == estimate_file_size_bytes(
+        LONG_EDGE_TIFF_THRESHOLD, 10, "png"
+    )
+
+
 def test_file_size_and_time():
     lo, hi = estimate_file_size_bytes(1000, 1000, "png")
     assert 0 < lo <= hi

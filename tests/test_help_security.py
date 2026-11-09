@@ -23,6 +23,15 @@ def test_get_help_valid():
     assert "Filter" in body or "filter" in body.lower()
 
 
+def test_mcp_get_help_returns_markdown():
+    """MCP get_help uses this import (`load_help`) and returns markdown."""
+    from upscaler.mcp_server import load_help
+
+    body = load_help("mcp", "en")
+    assert isinstance(body, str)
+    assert body.lstrip().startswith("#")
+
+
 def test_api_help_traversal_404():
     client = TestClient(app)
     r = client.get("/api/help/..%2F..%2Fsecret")

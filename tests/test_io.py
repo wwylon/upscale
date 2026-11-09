@@ -77,7 +77,7 @@ def test_vector_inputs_rejected():
     assert not is_vector_input("photo.png", "image/png")
     try:
         require_raster_suffix("icon.svg")
-        assert False, "expected ValueError"
+        raise AssertionError("expected ValueError")
     except ValueError as exc:
         assert "Vector" in str(exc) or "vector" in str(exc).lower()
 
@@ -208,3 +208,12 @@ def test_save_psd_psb_flat(tmp_path: Path, fmt: str):
     # Version 1 = PSD, 2 = PSB
     ver = int.from_bytes(data[4:6], "big")
     assert ver == (2 if fmt == "psb" else 1)
+
+
+def test_psd_size_limit_psb_allows_larger(tmp_path: Path):
+    rgb = np.zeros((1, 30001, 3), dtype=np.uint8)
+    with pytest.raises(ValueError, match="30000"):
+        save_image(rgb, tmp_path / "big.png", "RGB", None, fmt="psd")
+    path = save_image(rgb, tmp_path / "big.png", "RGB", None, fmt="psb")
+    assert path.suffix == ".psb"
+    assert path.read_bytes()[:4] == b"8BPS"

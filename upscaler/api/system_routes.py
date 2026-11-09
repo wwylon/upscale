@@ -111,23 +111,23 @@ class PresetApplyBody(BaseModel):
 
 @router.post("/api/presets/apply")
 def api_presets_apply(body: PresetApplyBody) -> dict[str, Any]:
-    from upscaler.presets import resolve_option_preset, resolve_target_preset
+    from upscaler.presets import _target_settings, resolve_option_preset, resolve_target_preset
 
     try:
         if body.kind == "target":
-            preset = resolve_target_preset(body.id)
+            target = resolve_target_preset(body.id)
             return {
-                "id": preset.id,
+                "id": target.id,
                 "kind": "target",
-                "label": preset.label,
-                "settings": {"target_size": preset.target_size},
+                "label": target.label,
+                "settings": _target_settings(target),
             }
-        preset = resolve_option_preset(body.id)
+        option = resolve_option_preset(body.id)
         return {
-            "id": preset.id,
+            "id": option.id,
             "kind": "option",
-            "label": preset.label,
-            "settings": dict(preset.settings),
+            "label": option.label,
+            "settings": dict(option.settings),
         }
     except KeyError as exc:
         raise HTTPException(404, str(exc)) from exc
@@ -176,13 +176,14 @@ def api_benchmark(body: BenchmarkBody) -> dict[str, Any]:
             "benchmark path must be under the jobs temp directory "
             f"({jobs_root})",
         )
-    return run_benchmark(
-        p,
-        model=body.model,
-        device=body.device,
-        crop_size=body.crop_size,
-        scale=body.scale,
-    )
+    with D._execute_lock:
+        return run_benchmark(
+            p,
+            model=body.model,
+            device=body.device,
+            crop_size=body.crop_size,
+            scale=body.scale,
+        )
 
 @router.get("/api/locales/{code}")
 def api_locale(code: str) -> JSONResponse:

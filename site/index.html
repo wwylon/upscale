@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>upscale — local AI image upscaler</title>
+  <meta name="description" content="Local AI image upscaler: chains Real-ESRGAN passes to any target scale, with feather-blended tiles for seam-free output. CPU or GPU, CLI, web UI and MCP.">
+  <meta property="og:title" content="upscale — local AI image upscaler">
+  <meta property="og:description" content="Chained Real-ESRGAN passes to any target scale, seam-free tiled output, runs on your own machine.">
+  <meta property="og:image" content="https://wwylon.github.io/upscale/social.jpg">
+  <meta property="og:url" content="https://wwylon.github.io/upscale/">
+  <link rel="canonical" href="https://wwylon.github.io/upscale/">
+  <style>
+    :root {
+      --bg: #0f1419;
+      --fg: #e8eef2;
+      --muted: #9aa8b5;
+      --accent: #2ec4b6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.5;
+    }
+    main {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem 4rem;
+    }
+    h1 {
+      margin: 0 0 0.75rem;
+      font-size: 1.75rem;
+      letter-spacing: -0.02em;
+    }
+    h1 span { color: var(--accent); }
+    .lead { color: var(--muted); max-width: 40rem; }
+    img.hero { width: 100%; height: auto; border-radius: 8px; margin: 1.5rem 0 0; }
+    ul { color: var(--muted); max-width: 40rem; padding-left: 1.2rem; }
+    pre {
+      background: #18202a;
+      padding: 0.9rem 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      color: var(--fg);
+    }
+    .cta { margin-top: 1.5rem; display: flex; flex-wrap: wrap; gap: 0.75rem; }
+    .cta a {
+      color: var(--bg);
+      background: var(--accent);
+      text-decoration: none;
+      padding: 0.55rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+    .cta a.secondary {
+      background: transparent;
+      color: var(--fg);
+      border: 1px solid var(--muted);
+    }
+    footer {
+      margin-top: 3rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    footer a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1><span>upscale</span></h1>
+    <p class="lead">Upscale images to any target size on your own machine. Real-ESRGAN passes are chained to reach the scale you ask for, and overlapping tiles are feather-blended so large outputs have no seams.</p>
+    <img class="hero" src="hero.jpg" alt="upscale: a small image tile growing into a large, detailed image">
+    <ul>
+      <li>Exact scale (<code>--scale</code>) or target long edge in pixels (<code>--target-size</code>)</li>
+      <li>CPU or NVIDIA GPU; tile size picked from free VRAM</li>
+      <li>Swappable models: Real-ESRGAN family, HAT, SPAN and community weights</li>
+      <li>CLI, local web UI and job API, MCP tools for agents</li>
+      <li>No telemetry; models download once from their public hosts</li>
+    </ul>
+    <pre>pip install -e ".[server]"
+upscale upscale input.png output.png --scale 4
+upscale serve</pre>
+    <div class="cta">
+      <a class="primary" href="https://github.com/wwylon/upscale#install">Install from GitHub</a>
+      <a class="secondary" href="https://github.com/wwylon/upscale/blob/main/docs/cli.md">CLI reference</a>
+    </div>
+    <footer>
+      MIT · <a href="https://github.com/wwylon/upscale">github.com/wwylon/upscale</a>
+    </footer>
+  </main>
+</body>
+</html>

@@ -62,8 +62,9 @@ def _execute_classical(
         raise JC("cancelled")
 
     # Resize padded (or not) canvas; finalize unwraps + exact size.
-    tw = round(prep.img.shape[1] * prep.scale)
-    th = round(prep.img.shape[0] * prep.scale)
+    from .job_prep import scaled_size
+
+    tw, th = scaled_size(prep.img.shape[1], prep.img.shape[0], prep.scale)
     if algorithm == "vectorize_scale":
         from .algorithms.plugins.vectorize_scale import vectorize_scale_resize
         from .schema import VectorizeSettings
@@ -83,16 +84,8 @@ def _execute_classical(
     else:
         result = resize_with_algorithm(algorithm, prep.img, tw, th)
 
+    # Keep alpha at the padded geometry; finalize_result unwraps + resizes.
     out_alpha = prep.alpha
-    if prep.alpha is not None and prep.original_mode in ("RGBA", "LA") and prep.scale != 1.0:
-        # Alpha is single-channel; paper plugins (vectorize, etc.) are RGB-oriented.
-        # Prefer a built-in interpolator for the matte.
-        from .algorithms.classical import BUILTIN_ALGORITHMS
-
-        alpha_algo = algorithm if algorithm in BUILTIN_ALGORITHMS else "lanczos3"
-        out_alpha = resize_with_algorithm(
-            alpha_algo, prep.alpha, prep.target_w, prep.target_h
-        )
 
     path = finalize_result(
         prep,
@@ -117,8 +110,39 @@ def resolve_tile(tile: str | int, device, half: bool) -> int:
         ) from exc
 
 
+def blend_parameters(dst_model, src_model, alpha: float) -> None:
+    """Atomically blend ``src`` into ``dst``: dst ← (1-α)·dst + α·src.
+
+    Builds a full replacement state dict and assigns it only after every
+    parameter name and shape matches. Raises on mismatch (caller may warn).
+    """
+    import torch
+
+    a = float(np.clip(alpha, 0.0, 1.0))
+    dst_sd = {k: v.detach() for k, v in dst_model.state_dict().items()}
+    src_sd = {k: v.detach() for k, v in src_model.state_dict().items()}
+    if set(dst_sd) != set(src_sd):
+        raise ValueError("blend_parameters: state dict keys differ")
+    blended = {}
+    for k, v_dst in dst_sd.items():
+        v_src = src_sd[k]
+        if v_dst.shape != v_src.shape:
+            raise ValueError(f"blend_parameters: shape mismatch on {k}")
+        if not torch.is_floating_point(v_dst):
+            blended[k] = v_dst.clone()
+        else:
+            blended[k] = v_dst.float().mul(1.0 - a).add_(v_src.float(), alpha=a).to(
+                dtype=v_dst.dtype
+            )
+    dst_model.load_state_dict(blended, strict=True)
+
+
 def _apply_denoise_dni(descriptor, cfg: UpscaleConfig, model_name: str, device, half, log, show) -> None:
-    """Blend general / WDN weights when --denoise is set for the general pair."""
+    """Blend general / WDN weights when --denoise is set for the general pair.
+
+    ``denoise=0.5`` (the config default) is a sentinel meaning "leave the base
+    weights alone" — not a 50/50 mix. Endpoints: 0 → general, 1 → full WDN.
+    """
     import torch
 
     dni = cfg.denoise
@@ -128,7 +152,8 @@ def _apply_denoise_dni(descriptor, cfg: UpscaleConfig, model_name: str, device, 
     wdn = "realesr-general-wdn-x4v3"
     if model_name not in (general, wdn):
         warnings.warn(
-            f"--denoise is only applied for {general}/{wdn}; ignored for {model_name}."
+            f"--denoise is only applied for {general}/{wdn}; ignored for {model_name}.",
+            stacklevel=2,
         )
         return
     try:
@@ -136,7 +161,6 @@ def _apply_denoise_dni(descriptor, cfg: UpscaleConfig, model_name: str, device, 
         # denoise=1 → full WDN, denoise=0 → full general
         w_wdn = float(np.clip(dni, 0.0, 1.0))
         if model_name == wdn:
-            # descriptor is WDN; blend toward general with (1 - w_wdn)
             other_path = ensure_model(other_name, cfg.resolved_weights_dir())
             other = load_model(other_path, device, half)
             a = 1.0 - w_wdn  # weight of other (general)
@@ -144,9 +168,11 @@ def _apply_denoise_dni(descriptor, cfg: UpscaleConfig, model_name: str, device, 
             other_path = ensure_model(wdn, cfg.resolved_weights_dir())
             other = load_model(other_path, device, half)
             a = w_wdn  # weight of WDN into general
-        with torch.no_grad():
-            for p_a, p_b in zip(descriptor.model.parameters(), other.model.parameters()):
-                p_a.data.mul_(1.0 - a).add_(p_b.data, alpha=a)
+        # Blend on CPU tensors when possible to avoid two full GPU residents.
+        other.model.to("cpu")
+        descriptor.model.to("cpu")
+        blend_parameters(descriptor.model, other.model, a)
+        descriptor.model.to(device)
         if show:
             log(f"Denoise DNI: {model_name} blended with {other_name} @ {dni:.2f}")
         del other
@@ -156,7 +182,11 @@ def _apply_denoise_dni(descriptor, cfg: UpscaleConfig, model_name: str, device, 
         if getattr(device, "type", None) == "cuda":
             torch.cuda.empty_cache()
     except Exception as exc:  # noqa: BLE001
-        warnings.warn(f"Denoise DNI skipped: {exc}")
+        warnings.warn(f"Denoise DNI skipped: {exc}", stacklevel=2)
+        try:
+            descriptor.model.to(device)
+        except Exception:  # noqa: BLE001
+            pass
 
 
 def execute(
@@ -193,7 +223,7 @@ def execute(
     dev = resolve_device(cfg.resolved_device_str())
     half = cfg.half
     if half and getattr(dev, "type", None) == "cpu":
-        warnings.warn("--half is ignored on CPU (fp16 not accelerated there).")
+        warnings.warn("--half is ignored on CPU (fp16 not accelerated there).", stacklevel=2)
         half = False
 
     tile_int = resolve_tile(cfg.tile, dev, half)
@@ -227,11 +257,10 @@ def execute(
             try:
                 other_path = ensure_model(cfg.blend_model, cfg.resolved_weights_dir())
                 other = load_model(other_path, dev, half)
-                with torch.no_grad():
-                    for p_a, p_b in zip(
-                        descriptor.model.parameters(), other.model.parameters()
-                    ):
-                        p_a.data.mul_(1.0 - cfg.blend).add_(p_b.data, alpha=cfg.blend)
+                other.model.to("cpu")
+                descriptor.model.to("cpu")
+                blend_parameters(descriptor.model, other.model, float(cfg.blend))
+                descriptor.model.to(dev)
                 if prep.show:
                     prep.log(f"Blended with {cfg.blend_model} @ {cfg.blend:.2f}")
                 del other
@@ -241,7 +270,11 @@ def execute(
                 if getattr(dev, "type", None) == "cuda":
                     torch.cuda.empty_cache()
             except Exception as exc:  # noqa: BLE001
-                warnings.warn(f"Model blend skipped: {exc}")
+                warnings.warn(f"Model blend skipped: {exc}", stacklevel=2)
+                try:
+                    descriptor.model.to(dev)
+                except Exception:  # noqa: BLE001
+                    pass
 
     passes = compute_passes(prep.scale, model_scale)
     if prep.show:
@@ -251,8 +284,9 @@ def execute(
         )
 
     # Targets for run include seamless pad so unwrap can peel correctly.
-    run_tw = round(prep.img.shape[1] * prep.scale)
-    run_th = round(prep.img.shape[0] * prep.scale)
+    from .job_prep import scaled_size
+
+    run_tw, run_th = scaled_size(prep.img.shape[1], prep.img.shape[0], prep.scale)
 
     try:
         result = run(
@@ -287,6 +321,7 @@ def execute(
         if cfg.sr_alpha and descriptor is not None and prep.scale > 1.0:
             if prep.show:
                 prep.log("Upscaling alpha via SR ...")
+            # Target the padded canvas; finalize unwraps with the same margins as RGB.
             out_alpha = upscale_alpha(
                 prep.alpha,
                 scale=prep.scale,
@@ -300,8 +335,8 @@ def execute(
                 disk_intermediate_threshold=cfg.disk_intermediate_threshold,
                 cancel_event=cfg.cancel_event,
                 pause_event=cfg.pause_event,
-                target_w=prep.target_w,
-                target_h=prep.target_h,
+                target_w=run_tw,
+                target_h=run_th,
             )
 
     return finalize_result(

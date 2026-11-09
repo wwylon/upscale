@@ -8,10 +8,9 @@ from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
+from png_fixtures import TINY_PNG
 
 from upscaler.server import app
-
-from png_fixtures import TINY_PNG
 
 
 @pytest.fixture

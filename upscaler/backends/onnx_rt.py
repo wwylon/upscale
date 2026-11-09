@@ -11,38 +11,53 @@ import numpy as np
 
 from ..config import UpscaleConfig
 from ..job_prep import clamp_overlap, finalize_result, prepare_job
-from ..models import FAST_MODEL, DEFAULT_WEIGHTS_DIR, registry_scale
+from ..models import DEFAULT_WEIGHTS_DIR, FAST_MODEL, registry_scale
 from ..pipeline import compute_passes, run
 from ..tiling import JobCancelled
 
 # Optional remote URL for pre-exported ONNX (publish when CI exports).
+# sha256/url filled when a release host is published; until then ensure_onnx_model
+# looks on disk and raises a clear first-run message.
 ONNX_MODELS: dict[str, dict] = {
     "4x-spanx4-ch48": {
         "scale": 4,
         "filename": "4x-spanx4-ch48.onnx",
         "description": "SPAN 4x (ONNX). Preferred slim desktop model.",
+        "sha256": None,
+        "url": None,
     },
     "RealESRGAN_x4plus": {
         "scale": 4,
         "filename": "RealESRGAN_x4plus.onnx",
         "description": "RealESRGAN x4plus (ONNX).",
+        "sha256": None,
+        "url": None,
     },
     "RealESRGAN_x4plus_anime_6B": {
         "scale": 4,
         "filename": "RealESRGAN_x4plus_anime_6B.onnx",
         "description": "Anime 6B (ONNX).",
+        "sha256": None,
+        "url": None,
     },
     "realesr-general-x4v3": {
         "scale": 4,
         "filename": "realesr-general-x4v3.onnx",
         "description": "General x4v3 (ONNX).",
+        "sha256": None,
+        "url": None,
     },
     "realesr-general-wdn-x4v3": {
         "scale": 4,
         "filename": "realesr-general-wdn-x4v3.onnx",
         "description": "General WDN x4v3 (ONNX).",
+        "sha256": None,
+        "url": None,
     },
 }
+
+# Cache ORT sessions by (path, providers) for the process lifetime.
+_ORT_SESSION_CACHE: dict[tuple[str, tuple[str, ...]], object] = {}
 
 
 def _weights_dir(cfg: UpscaleConfig | None = None) -> Path:
@@ -61,16 +76,38 @@ def onnx_path_for(name: str, weights_dir: Path) -> Path:
 
 
 def ensure_onnx_model(name: str, weights_dir: Path | None = None) -> Path:
-    """Return path to .onnx weights. Does not download yet — must be exported/placed."""
+    """Return path to .onnx weights; download when url+sha256 are configured."""
     wdir = weights_dir or DEFAULT_WEIGHTS_DIR
     wdir = Path(wdir)
     wdir.mkdir(parents=True, exist_ok=True)
     path = onnx_path_for(name, wdir)
+    meta = ONNX_MODELS.get(name, {})
     if path.is_file():
+        expected = meta.get("sha256")
+        if expected:
+            from ..models import _sha256
+
+            if _sha256(path) != expected:
+                path.unlink(missing_ok=True)
+            else:
+                return path
+        else:
+            return path
+    url = meta.get("url")
+    sha = meta.get("sha256")
+    if url and sha:
+        from ..models import _download_with_retries, _sha256
+
+        _download_with_retries(url, path)
+        if _sha256(path) != sha:
+            path.unlink(missing_ok=True)
+            raise RuntimeError(f"ONNX hash mismatch for {name}")
         return path
     raise FileNotFoundError(
         f"ONNX model not found: {path}\n"
-        f"Export on a Torch machine: py -3 scripts/export_onnx.py {name} -o {path}"
+        "First-run: export on a Torch machine with\n"
+        f"  py -3 scripts/export_onnx.py {name} -o {path}\n"
+        "or place a pre-exported .onnx in the models folder."
     )
 
 
@@ -78,15 +115,22 @@ def _ort_session(model_path: Path):
     import onnxruntime as ort
 
     available = set(ort.get_available_providers())
+    # Prefer CUDA when present; else DirectML (Windows slim); else CPU.
     preferred = []
-    for p in ("DmlExecutionProvider", "CUDAExecutionProvider", "CPUExecutionProvider"):
+    for p in ("CUDAExecutionProvider", "DmlExecutionProvider", "CPUExecutionProvider"):
         if p in available:
             preferred.append(p)
     if not preferred:
         preferred = ["CPUExecutionProvider"]
+    key = (str(model_path.resolve()), tuple(preferred))
+    cached = _ORT_SESSION_CACHE.get(key)
+    if cached is not None:
+        return cached, preferred[0]
     opts = ort.SessionOptions()
     opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
-    return ort.InferenceSession(str(model_path), opts, providers=preferred), preferred[0]
+    session = ort.InferenceSession(str(model_path), opts, providers=preferred)
+    _ORT_SESSION_CACHE[key] = session
+    return session, preferred[0]
 
 
 def make_onnx_infer_fn(session, input_name: str) -> Callable[[np.ndarray], np.ndarray]:
@@ -147,12 +191,39 @@ def execute_onnx(
         )
 
     if cfg.blend_model:
-        warnings.warn("blend_model is not supported on the ONNX backend yet; ignored.")
+        warnings.warn(
+            "blend_model weight interpolation needs Torch; ignored on ONNX. "
+            "Export a pre-blended ONNX or use the Torch backend.",
+            stacklevel=2,
+        )
     if cfg.denoise is not None and abs(cfg.denoise - 0.5) > 1e-6:
-        warnings.warn("--denoise DNI is not supported on the ONNX backend yet; ignored.")
+        # Soft parity: if the WDN twin is on disk, switch to it when denoise>0.5.
+        wdn = "realesr-general-wdn-x4v3"
+        general = "realesr-general-x4v3"
+        if model_name in (general, wdn) and cfg.denoise > 0.5:
+            alt = onnx_path_for(wdn, wdir)
+            if alt.is_file() and model_name != wdn:
+                model_name = wdn
+                path = alt
+                session, provider = _ort_session(path)
+                input_name = session.get_inputs()[0].name
+                infer = make_onnx_infer_fn(session, input_name)
+                if prep.show:
+                    prep.log(f"ONNX denoise>0.5 → switched to {wdn}")
+            else:
+                warnings.warn(
+                    "--denoise DNI is not supported on ONNX (no WDN twin on disk); ignored.",
+                    stacklevel=2,
+                )
+        else:
+            warnings.warn(
+                "--denoise DNI is not supported on the ONNX backend yet; ignored.",
+                stacklevel=2,
+            )
 
-    run_tw = round(prep.img.shape[1] * prep.scale)
-    run_th = round(prep.img.shape[0] * prep.scale)
+    from ..job_prep import scaled_size
+
+    run_tw, run_th = scaled_size(prep.img.shape[1], prep.img.shape[0], prep.scale)
 
     try:
         result = run(

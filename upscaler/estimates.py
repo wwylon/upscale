@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
+from .io_utils import LONG_EDGE_TIFF_THRESHOLD
 from .pipeline import compute_passes
 from .schema import PrintSize, ResourceCheck, ResourceRow, ResourceStatus
 
@@ -78,7 +79,7 @@ def estimate_file_size_bytes(
 ) -> tuple[int, int]:
     """Return (low, high) estimated file size in bytes."""
     use = fmt
-    if fmt == "auto" and max(w, h) > 20000:
+    if fmt == "auto" and max(w, h) > LONG_EDGE_TIFF_THRESHOLD:
         use = "tiff"
     elif fmt == "auto":
         use = "png"
@@ -122,10 +123,12 @@ def estimate_time_seconds(
     past runs on this machine), the range is tighter and load overhead is
     treated as warm-start.
     """
-    from .speed_stats import work_megapixels
+    from .speed_stats import normalize_device, work_megapixels
 
     table = speed_table or SPEED_MP_S
-    dev = device if device in table else ("cuda" if device == "auto" else "cpu")
+    dev = normalize_device(device)
+    if dev not in table:
+        dev = "cpu"
     factors = table.get(dev, table["cpu"])
     if algorithm:
         # Classical resize is typically much faster than neural SR.
@@ -205,9 +208,10 @@ def resource_check(
     rows: list[ResourceRow] = []
     blocked = False
 
-    # Strip peak ≈ full-width × tile×scale float canvas + weight + uint8 result
-    # (not 3× full float frames). Add a small spill reserve for mid-pass disk.
-    strip_h = max(64, min(tile * 4, out_h))
+    # Strip peak ≈ full-width × tile×model_scale float canvas + weight + uint8.
+    # Default model_scale 4 matches shipped weights; clamp to output height.
+    model_scale_guess = 4
+    strip_h = max(64, min(tile * model_scale_guess, out_h))
     need_ram = (
         (out_w * strip_h * 3 * 4)  # float canvas
         + (out_w * strip_h * 4)  # weight map

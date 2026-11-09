@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from collections import OrderedDict
 from typing import Callable
 
@@ -11,6 +12,7 @@ from tqdm import tqdm
 # LRU cache: (h, w, overlap, feather flags...) -> mask
 _MASK_CACHE: OrderedDict[tuple, np.ndarray] = OrderedDict()
 _MASK_CACHE_MAX = 64
+_MASK_CACHE_LOCK = threading.Lock()
 
 
 def make_tile_weight(
@@ -29,10 +31,11 @@ def make_tile_weight(
     Returns float32 array of shape (h, w).
     """
     key = (h, w, overlap, feather_top, feather_bottom, feather_left, feather_right)
-    cached = _MASK_CACHE.get(key)
-    if cached is not None:
-        _MASK_CACHE.move_to_end(key)
-        return cached
+    with _MASK_CACHE_LOCK:
+        cached = _MASK_CACHE.get(key)
+        if cached is not None:
+            _MASK_CACHE.move_to_end(key)
+            return cached
 
     ramp_h = np.ones(h, dtype=np.float32)
     ramp_w = np.ones(w, dtype=np.float32)
@@ -54,14 +57,16 @@ def make_tile_weight(
                 ramp_w[-n_w:] = ramp[::-1]
 
     mask = np.outer(ramp_h, ramp_w)
-    _MASK_CACHE[key] = mask
-    while len(_MASK_CACHE) > _MASK_CACHE_MAX:
-        _MASK_CACHE.popitem(last=False)
+    with _MASK_CACHE_LOCK:
+        _MASK_CACHE[key] = mask
+        while len(_MASK_CACHE) > _MASK_CACHE_MAX:
+            _MASK_CACHE.popitem(last=False)
     return mask
 
 
 def clear_mask_cache() -> None:
-    _MASK_CACHE.clear()
+    with _MASK_CACHE_LOCK:
+        _MASK_CACHE.clear()
 
 
 def _tile_starts(length: int, tile: int, overlap: int) -> list[int]:
@@ -145,45 +150,57 @@ def tiled_upscale(
     if resume and jd is not None:
         from .checkpoint import load_strip_checkpoint
 
-        loaded = load_strip_checkpoint(jd)
+        loaded = load_strip_checkpoint(
+            jd,
+            expect_tile=tile,
+            expect_overlap=overlap,
+            expect_pass=pass_index,
+            expect_out_h=out_H,
+            expect_out_w=out_W,
+            expect_channels=C,
+            expect_model_scale=model_scale,
+        )
         if loaded is not None:
             meta, extras = loaded
-            if (
-                meta.pass_index == pass_index
-                and meta.out_h == out_H
-                and meta.out_w == out_W
-                and meta.model_scale == model_scale
-                and meta.channels == C
+            flush_row = meta.flush_row
+            cc = extras.get("carry_canvas")
+            cw = extras.get("carry_weight")
+            if cc is not None and (
+                cc.ndim != 3
+                or cc.shape[0] < 1
+                or cc.shape[1] != out_W
+                or cc.shape[2] != C
             ):
-                flush_row = meta.flush_row
-                if flush_row > 0:
-                    stored = extras.get("result_mmap")
-                    reopen = _Path(stored) if stored else mmap_path
-                    if (
-                        reopen is not None
-                        and reopen.is_file()
-                        and reopen.stat().st_size >= out_bytes
-                    ):
-                        resume_ok = True
-                        mmap_path = reopen
-                    else:
-                        # Cannot restore flushed pixels — start clean.
-                        flush_row = 0
-                else:
+                flush_row = 0
+                cc = None
+                cw = None
+            if flush_row > 0:
+                stored = extras.get("result_mmap")
+                reopen = _Path(stored) if stored else mmap_path
+                if (
+                    reopen is not None
+                    and reopen.is_file()
+                    and reopen.stat().st_size >= out_bytes
+                ):
                     resume_ok = True
-                if resume_ok and flush_row > 0:
-                    carry_top = extras.get("carry_top") or flush_row
-                    carry_canvas = extras.get("carry_canvas")
-                    carry_weight = extras.get("carry_weight")
-                    for yi, y in enumerate(y_starts):
-                        if yi + 1 < len(y_starts):
-                            fe = y_starts[yi + 1] * model_scale
-                        else:
-                            fe = out_H
-                        if fe <= flush_row:
-                            start_yi = yi + 1
-                        else:
-                            break
+                    mmap_path = reopen
+                    carry_canvas = cc
+                    carry_weight = cw
+                    carry_top = int(extras.get("carry_top") or flush_row)
+                else:
+                    flush_row = 0
+            else:
+                resume_ok = True
+            if resume_ok and flush_row > 0:
+                for yi, _y in enumerate(y_starts):
+                    if yi + 1 < len(y_starts):
+                        fe = y_starts[yi + 1] * model_scale
+                    else:
+                        fe = out_H
+                    if fe <= flush_row:
+                        start_yi = yi + 1
+                    else:
+                        break
 
     result: np.ndarray
     if use_mmap and mmap_path is not None:
@@ -281,9 +298,13 @@ def tiled_upscale(
         local_end = finalize_end - strip_top
         if local_end > 0:
             wslice = np.maximum(weight_map[:local_end], 1e-8)
-            blended = canvas[:local_end] / wslice
-            result[flush_row:finalize_end] = np.clip(blended, 0, 255).astype(np.uint8)
+            np.divide(canvas[:local_end], wslice, out=canvas[:local_end])
+            result[flush_row:finalize_end] = np.clip(
+                canvas[:local_end], 0, 255
+            ).astype(np.uint8)
             flush_row = finalize_end
+            if isinstance(result, np.memmap) or getattr(result, "filename", None):
+                result.flush()
 
         # Carry unflushed overlap rows into the next band
         if finalize_end < strip_bottom:
@@ -329,11 +350,11 @@ def tiled_upscale(
         from .checkpoint import clear_strip_checkpoint
 
         clear_strip_checkpoint(job_dir)
-    if type(result).__name__ == "memmap" or getattr(result, "filename", None) is not None:
+    if isinstance(result, np.memmap) or getattr(result, "filename", None) is not None:
         result.flush()
-        # Materialize for callers that expect a normal ndarray ownership model
-        # for mid-size results; keep mmap view for huge ones (caller may save).
-        if out_bytes < memmap_threshold * 4:
+        # Keep the memmap for mid-size results when job_dir owns it — avoids
+        # doubling peak RAM. Callers that need a plain ndarray can copy.
+        if out_bytes < memmap_threshold * 4 and jd is None:
             result = np.array(result)
     return result
 
@@ -348,19 +369,23 @@ def make_infer_fn(descriptor, device, fp16: bool):
     import torch
 
     model = descriptor.model
+    use_half = bool(fp16 and getattr(device, "type", None) == "cuda")
+    dtype = torch.float16 if use_half else torch.float32
 
     def infer(patch: np.ndarray) -> np.ndarray:
         from .infer_util import nchw_float_to_uint8, patch_to_nchw_float
 
         nchw = patch_to_nchw_float(patch)
-        t = torch.from_numpy(nchw).to(device)
-        if fp16 and getattr(device, "type", None) == "cuda":
-            t = t.half()
+        t = torch.from_numpy(nchw).to(device=device, dtype=dtype, non_blocking=True)
 
         with torch.no_grad():
             out = model(t)
+            out = out.float().clamp_(0, 1)
+            # Quantize on device so D2H is uint8-sized after round-trip via float
+            # host path kept for dtype compatibility with nchw_float_to_uint8.
+            host = out.cpu().numpy()
 
-        result = nchw_float_to_uint8(out.float().clamp(0, 1).cpu().numpy())
+        result = nchw_float_to_uint8(host)
         del t, out
         return result
 

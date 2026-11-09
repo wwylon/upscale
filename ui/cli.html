@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="/ui/i18n.config.js"></script>
+<script src="/ui/i18n.js"></script>
 <script src="/ui/support.js"></script>
 </head>
 <body>
@@ -14,26 +16,26 @@
 </helmet>
 <div style="min-height:100vh;color:var(--color-text);font-family:var(--font-body)">
   <header style="display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:16px 24px;border-bottom:2px solid var(--color-divider);flex-wrap:wrap">
-    <div style="display:flex;align-items:baseline;gap:16px"><span style="font-family:var(--font-heading);font-weight:800;font-size:22px;letter-spacing:-0.02em">UPSCALE<span style="color:var(--color-accent)">.</span></span><span style="font-size:13px">Command line</span></div>
-    <a href="./" style="font-size:14px">← Back to upscaler</a>
+    <div style="display:flex;align-items:baseline;gap:16px"><span style="font-family:var(--font-heading);font-weight:800;font-size:22px;letter-spacing:-0.02em">UPSCALE<span style="color:var(--color-accent)">.</span></span><span style="font-size:13px" data-i18n="cli.title">Command line</span></div>
+    <div style="display:flex;gap:16px;align-items:center"><select class="input" aria-label="Language" data-i18n-aria-label="settings.language" value="{{ lang }}" onChange="{{ onLang }}" style="width:auto;min-height:0;padding:4px 8px"><option value="en">English</option><option value="pl">Polski</option><option value="zh">中文</option><option value="ar">العربية</option></select><a href="./" style="font-size:14px">← <span data-i18n="nav.back">Back to upscaler</span></a></div>
   </header>
   <main style="display:flex;flex-wrap:wrap">
     <section style="flex:1 1 440px;padding:24px;border-right:2px solid var(--color-divider);display:flex;flex-direction:column;gap:20px;min-width:0">
-      <h2 style="margin:0">Run it from a terminal</h2>
-      <p style="margin:0;max-width:520px;line-height:1.55">The same engine as the web and Windows apps. Pick an example, copy the command, and see what it prints.</p>
+      <h2 style="margin:0" data-i18n="cli.heading">Run it from a terminal</h2>
+      <p style="margin:0;max-width:520px;line-height:1.55" data-i18n="cli.intro">The same engine as the web and Windows apps. Pick an example, copy the command, and see what it prints.</p>
       <div style="display:flex;flex-direction:column;border-top:2px solid var(--color-divider)">
         <sc-for list="{{ examples }}" as="e" hint-placeholder-count="5"><button onClick="{{ e.pick }}" style="{{ e.style }}"><span style="font-weight:700;font-size:15px">{{ e.title }}</span><span style="font-size:13px">{{ e.note }}</span></button></sc-for>
       </div>
     </section>
     <section style="flex:2 1 560px;min-width:0;display:flex;flex-direction:column">
       <div style="background:#201e1d;color:#f3f2f2;padding:24px;display:flex;flex-direction:column;gap:12px;flex:1;min-height:340px">
-        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><span style="font-size:12px;letter-spacing:.08em;font-weight:700">TERMINAL</span><button class="btn btn-secondary" style="color:#f3f2f2;border-color:#7d7979" onClick="{{ copy }}">{{ copyLabel }}</button></div>
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><span style="font-size:12px;letter-spacing:.08em;font-weight:700" data-i18n="cli.terminal">TERMINAL</span><button class="btn btn-secondary" style="color:#f3f2f2;border-color:#7d7979" onClick="{{ copy }}">{{ copyLabel }}</button></div>
         <pre style="margin:0;font-family:ui-monospace,Consolas,monospace;font-size:14px;line-height:1.6;white-space:pre-wrap;word-break:break-word"><span style="color:#ff9783">$</span> {{ cmd }}</pre>
         <pre style="margin:0;font-family:ui-monospace,Consolas,monospace;font-size:13px;line-height:1.6;white-space:pre-wrap;color:#bab6b6">{{ out }}</pre>
       </div>
       <div style="padding:24px;display:flex;flex-direction:column;gap:12px;border-top:2px solid var(--color-divider)">
-        <h3 style="margin:0">Options</h3>
-        <div style="overflow-x:auto"><table class="table" style="width:100%"><thead><tr><th>Option</th><th>Default</th><th>What it does</th></tr></thead>
+        <h3 style="margin:0" data-i18n="cli.options">Options</h3>
+        <div style="overflow-x:auto"><table class="table" style="width:100%"><thead><tr><th data-i18n="cli.col.option">Option</th><th data-i18n="cli.col.default">Default</th><th data-i18n="cli.col.what">What it does</th></tr></thead>
         <tbody><sc-for list="{{ options }}" as="o" hint-placeholder-count="8"><tr><td style="font-family:ui-monospace,Consolas,monospace;font-size:13px;white-space:nowrap">{{ o.flag }}</td><td>{{ o.def }}</td><td>{{ o.text }}</td></tr></sc-for></tbody></table></div>
       </div>
     </section>
@@ -43,22 +45,35 @@
 <script type="text/x-dc" data-dc-script>
 class Component extends DCLogic {
   state = { i: 0, copied: false };
+  applyStoredPrefs(){
+    try{
+      const p=JSON.parse(localStorage.getItem('upscale.prefs')||'{}');
+      const r=document.documentElement.style;
+      const dark={'--color-bg':'#1b1a19','--color-surface':'#262423','--color-text':'#f3f2f2','--color-divider':'color-mix(in srgb, #f3f2f2 40%, transparent)','--color-neutral-100':'#2d2b2b','--color-neutral-200':'#3a3737','--color-neutral-300':'#4c4949','--color-neutral-400':'#605d5d','--color-neutral-500':'#7d7979','--color-neutral-600':'#9b9797','--color-neutral-700':'#bab6b6','--color-neutral-800':'#d7d3d3','--color-neutral-900':'#f8f4f4','--color-accent-100':'#4d170e','--color-accent-200':'#7c1405','--color-accent-700':'#ff9783','--color-accent-800':'#ffc4b8'};
+      const isDark=p.theme==='dark'||(p.theme==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches);
+      for(const k in dark){if(isDark)r.setProperty(k,dark[k]);else r.removeProperty(k);}
+      r.setProperty('--fs',({normal:1,larger:1.15,largest:1.3})[p.fsize]||1);
+      r.colorScheme=isDark?'dark':'light';
+    }catch(e){}
+  }
+  componentDidMount(){ this.applyStoredPrefs(); }
   EX = [
-    ['Upscale 4×', 'One image, default model', 'python -m upscaler photo.jpg photo_4x.png --scale 4', 'Loading photo.jpg ...\nDevice: cuda  |  Model: RealESRGAN_x4plus  |  Scale: 4.000x  |  Passes: 1\nAuto tile size: 512\n100%|██████████| 20/20 tiles\nSaved 6000×4000 → photo_4x.png'],
-    ['Exact long edge', 'Choose the size in pixels', 'python -m upscaler photo.jpg photo_big.tif --target-size 30000', 'Device: cuda  |  Scale: 15.000x  |  Passes: 2\nPass 1/2  100%\nPass 2/2  100%\nLong edge > 20000 px: saving as TIFF (lzw)\nSaved 30000×20000 → photo_big.tif'],
-    ['Test a crop', 'Check quality before the full run', 'python -m upscaler photo.jpg crop.png --scale 4 --crop 1200,800,512,512', 'Crop 512×512 at (1200, 800)\n100%|██████████| 1/1 tiles\nSaved 2048×2048 → crop.png'],
-    ['Compare models', 'Same crop, several models', 'python -m upscaler compare photo.jpg out/ --crop 1200,800,512,512 --models RealESRGAN_x4plus,4x-UltraSharp,4x-spanx4-ch48', 'RealESRGAN_x4plus   4.1 s  → out/RealESRGAN_x4plus.png\n4x-UltraSharp       4.0 s  → out/4x-UltraSharp.png\n4x-spanx4-ch48      0.7 s  → out/4x-spanx4-ch48.png'],
-    ['Batch a folder', 'Same options for every image', 'python -m upscaler batch ./input ./output --scale 4 --format webp --quality 90', 'Found 12 images\n[ 1/12] a.jpg  → output/a_4x.webp\n[ 2/12] b.jpg  → output/b_4x.webp\n...\nDone in 3 min 12 s'],
-    ['Add a model', 'External weights', 'python -m upscaler models add 4x-MyModel https://example.com/4x-MyModel.safetensors --scale 4', 'Downloading 4x-MyModel ...\n100%\nSHA-256 4f1c…e07a saved\nDetected architecture: ESRGAN (RRDB)\nAdded 4x-MyModel to models/registry.json'],
-    ['List models', 'Built-in and added', 'python -m upscaler models list', 'RealESRGAN_x4plus          photo   installed\nRealESRGAN_x4plus_anime_6B anime   installed\n4xNomosUni_span_multijpg   photo   not downloaded\n4x-MyModel                 custom  installed']
+    [i18n.t('cli.ex.upscale4.title'), i18n.t('cli.ex.upscale4.note'), 'python -m upscaler photo.jpg photo_4x.png --scale 4', 'Loading photo.jpg ...\nDevice: cuda  |  Model: RealESRGAN_x4plus  |  Scale: 4.000x  |  Passes: 1\nAuto tile size: 512\n100%|██████████| 20/20 tiles\nSaved 6000×4000 → photo_4x.png'],
+    [i18n.t('cli.ex.long_edge.title'), i18n.t('cli.ex.long_edge.note'), 'python -m upscaler photo.jpg photo_big.tif --target-size 30000', 'Device: cuda  |  Scale: 15.000x  |  Passes: 2\nPass 1/2  100%\nPass 2/2  100%\nLong edge > 20000 px: saving as TIFF (lzw)\nSaved 30000×20000 → photo_big.tif'],
+    [i18n.t('cli.ex.crop.title'), i18n.t('cli.ex.crop.note'), 'python -m upscaler photo.jpg crop.png --scale 4 --crop 1200,800,512,512', 'Crop 512×512 at (1200, 800)\n100%|██████████| 1/1 tiles\nSaved 2048×2048 → crop.png'],
+    [i18n.t('cli.ex.compare.title'), i18n.t('cli.ex.compare.note'), 'python -m upscaler compare photo.jpg out/ --crop 1200,800,512,512 --models RealESRGAN_x4plus,4x-UltraSharp,4x-spanx4-ch48', 'RealESRGAN_x4plus   4.1 s  → out/RealESRGAN_x4plus.png\n4x-UltraSharp       4.0 s  → out/4x-UltraSharp.png\n4x-spanx4-ch48      0.7 s  → out/4x-spanx4-ch48.png'],
+    [i18n.t('cli.ex.batch.title'), i18n.t('cli.ex.batch.note'), 'python -m upscaler batch ./input ./output --scale 4 --format webp --quality 90', 'Found 12 images\n[ 1/12] a.jpg  → output/a_4x.webp\n[ 2/12] b.jpg  → output/b_4x.webp\n...\nDone in 3 min 12 s'],
+    [i18n.t('cli.ex.add.title'), i18n.t('cli.ex.add.note'), 'python -m upscaler models add 4x-MyModel https://example.com/4x-MyModel.safetensors --scale 4', 'Downloading 4x-MyModel ...\n100%\nSHA-256 4f1c…e07a saved\nDetected architecture: ESRGAN (RRDB)\nAdded 4x-MyModel to models/registry.json'],
+    [i18n.t('cli.ex.list.title'), i18n.t('cli.ex.list.note'), 'python -m upscaler models list', 'RealESRGAN_x4plus          photo   installed\nRealESRGAN_x4plus_anime_6B anime   installed\n4xNomosUni_span_multijpg   photo   not downloaded\n4x-MyModel                 custom  installed']
   ];
-  OPT = [['--scale, -s','','Scale factor, e.g. 15 for 15×. Not with --target-size.'],['--target-size, -t','','Long edge in pixels.'],['--model, -m','RealESRGAN_x4plus','Built-in name or path to a .pth / .safetensors file.'],['--crop','whole image','x,y,w,h region to process (test mode).'],['--strength','1.0','Mix of model output and plain resize, 0 to 1.'],['--denoise','0.5','Denoise strength for realesr-general-wdn-x4v3.'],['--blend-model, --blend','none','Mix a second model into the first, weight 0 to 1.'],['--tile','auto','Tile size in px. Lower it to use less GPU memory.'],['--overlap','32','Tile overlap in px, blended to hide seams.'],['--device, --cpu','auto','auto, cuda or cpu.'],['--half','off','fp16 on CUDA.'],['--format','from file name','png, jpeg, webp or tiff.'],['--quality','90','JPEG / WebP quality.'],['--tiff-compression','lzw','lzw, jpeg or none.'],['--weights-dir','models/','Where model files are stored.'],['--quiet, -q','','No progress output.']];
+  OPT = [['--scale, -s','',i18n.t('cli.opt.scale')],['--target-size, -t','',i18n.t('cli.opt.target_size')],['--model, -m','RealESRGAN_x4plus',i18n.t('cli.opt.model')],['--crop',i18n.t('cli.def.whole_image'),i18n.t('cli.opt.crop')],['--strength','1.0',i18n.t('cli.opt.strength')],['--denoise','0.5',i18n.t('cli.opt.denoise')],['--blend-model, --blend','none',i18n.t('cli.opt.blend')],['--tile','auto',i18n.t('cli.opt.tile')],['--overlap','32',i18n.t('cli.opt.overlap')],['--device, --cpu','auto',i18n.t('cli.opt.device')],['--half','off',i18n.t('cli.opt.half')],['--format',i18n.t('cli.def.from_name'),i18n.t('cli.opt.format')],['--quality','90',i18n.t('cli.opt.quality')],['--tiff-compression','lzw',i18n.t('cli.opt.tiff')],['--weights-dir','models/',i18n.t('cli.opt.weights_dir')],['--quiet, -q','',i18n.t('cli.opt.quiet')]];
   renderVals() {
     const e = this.EX[this.state.i];
     return {
       examples: this.EX.map((x, i) => ({ title: x[0], note: x[1], pick: () => this.setState({ i, copied: false }),
         style: 'text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:2px;padding:14px 0;border:0;border-bottom:1px solid var(--color-neutral-300);font-family:inherit;color:var(--color-text);background:' + (i === this.state.i ? 'var(--color-accent-100)' : 'transparent') + ';padding-left:' + (i === this.state.i ? '12px' : '0') }) ),
-      cmd: e[2], out: e[3], copyLabel: this.state.copied ? 'Copied' : 'Copy command',
+      cmd: e[2], out: e[3], copyLabel: this.state.copied ? i18n.t('cli.copied') : i18n.t('cli.copy'),
+      lang:(i18n.isQa?'en':i18n.locale), onLang:e=>i18n.setLocale(e.target.value),
       copy: () => { try { navigator.clipboard.writeText(e[2]); } catch (x) {} this.setState({ copied: true }); },
       options: this.OPT.map(o => ({ flag: o[0], def: o[1] || '–', text: o[2] }))
     };

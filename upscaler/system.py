@@ -24,6 +24,7 @@ def gather_system_info(
 
     try:
         import torch
+
         from .models import auto_tile_size, resolve_device
 
         dev = resolve_device(device)

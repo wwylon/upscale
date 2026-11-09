@@ -30,8 +30,13 @@ def noisy_png(tmp_path: Path) -> Path:
 def test_target_presets():
     p = resolve_target_preset("4k")
     assert p.target_size == 3840
+    a4 = resolve_target_preset("a4_300")
+    assert (a4.width, a4.height) == (2480, 3508)
+    link = resolve_target_preset("social_link")
+    assert (link.width, link.height) == (1200, 630)
     data = list_presets()
     assert any(x["id"] == "photo_4x" for x in data["options"])
+    assert any(x["id"] == "social_square" and x["width"] == 1080 for x in data["targets"])
 
 
 def test_option_preset_photo():

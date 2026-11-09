@@ -9,7 +9,6 @@ from .config import UpscaleConfig
 from .engine import execute
 from .schema import CropRect, FilterSettings
 
-
 # UI filter key → FilterSettings field
 FILTER_UI_TO_SCHEMA = {
     "denoise": "pre_denoise",
