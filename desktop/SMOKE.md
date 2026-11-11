@@ -3,7 +3,6 @@
 ## Dev mode (Python)
 
 - [ ] `pip install -e ".[desktop,server]"` + `onnxruntime`
-- [ ] `py -3 scripts/sync_design_ui.py`
 - [ ] `py -3 scripts/export_onnx.py 4x-spanx4-ch48`
 - [ ] `$env:UPSCALE_BACKEND='onnx'; py -3 desktop/app.py` opens design UI
 - [ ] Upscale a small PNG; before/after shows result

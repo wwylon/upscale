@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "upscale"
-version = "0.5.0"
+version = "0.5.1"
 description = "Local AI image upscaler: chained Real-ESRGAN passes to any scale, seam-free feather-blended tiles"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -49,7 +49,8 @@ ui = ["gradio>=4.0"]
 server = ["fastapi>=0.110", "uvicorn[standard]>=0.27", "python-multipart>=0.0.9"]
 mcp = ["mcp>=1.0"]
 desktop = ["pywebview>=5.0"]
-# Slim Windows desktop: FastAPI + webview + ORT — no Torch at runtime
+# Adds ONNX Runtime + desktop deps for the Windows exe build. Does NOT remove torch (a core
+# dependency); the shipped exe is built without it by desktop/build_windows_slim.ps1.
 slim = [
     "upscale[server,desktop]",
     "onnxruntime>=1.17",

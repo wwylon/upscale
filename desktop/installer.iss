@@ -7,7 +7,7 @@
 
 #define MyAppName "Upscale"
 ; AppVersion is hardcoded — keep it equal to [project].version in pyproject.toml.
-#define MyAppVersion "0.5.0"
+#define MyAppVersion "0.5.1"
 #define MyAppPublisher "Upscale"
 #define MyAppExeName "Upscale.exe"
 

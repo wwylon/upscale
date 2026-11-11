@@ -74,7 +74,7 @@ if _models_override:
 
     _models_mod.DEFAULT_WEIGHTS_DIR = Path(_models_override)
 
-app = FastAPI(title="Upscale", version="0.5.0")
+app = FastAPI(title="Upscale", version="0.5.1")
 
 
 class JobState(str, Enum):
@@ -1041,9 +1041,11 @@ def run_server(host: str = "127.0.0.1", port: int = 8787) -> None:
     def _force_exit(_signum=None, _frame=None) -> None:
         os._exit(0)
 
-    signal.signal(signal.SIGINT, _force_exit)
-    if hasattr(signal, "SIGBREAK"):
-        signal.signal(signal.SIGBREAK, _force_exit)
+    # signal.signal only works on the main thread; the desktop app runs us in a worker thread.
+    if threading.current_thread() is threading.main_thread():
+        signal.signal(signal.SIGINT, _force_exit)
+        if hasattr(signal, "SIGBREAK"):
+            signal.signal(signal.SIGBREAK, _force_exit)
 
     uvicorn.run(
         app,

@@ -17,13 +17,12 @@ Local AI image upscale. Chains Real-ESRGAN passes (via [spandrel](https://github
 pip install "git+https://github.com/wwylon/upscale.git"   # or: pipx install git+https://github.com/wwylon/upscale.git
 ```
 
-The default install pulls PyTorch (large, slow first install). For a lighter ONNX Runtime-only setup without PyTorch use the `slim` extra: `pip install "upscale[slim] @ git+https://github.com/wwylon/upscale.git"`.
+The pip install pulls PyTorch (large, slow first install). A PyTorch-free build exists only as the Windows desktop app (ONNX Runtime); see [docs/develop.md](docs/develop.md).
 
 From a clone:
 
 ```bash
 pip install -e .
-pip install -e ".[slim]"      # no PyTorch (ONNX Runtime)
 pip install -e ".[server]"    # web UI + job API
 pip install -e ".[mcp]"       # MCP tools for agents
 ```

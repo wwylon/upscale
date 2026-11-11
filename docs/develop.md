@@ -93,7 +93,6 @@ Shippable Windows builds **do not include PyTorch**. The app uses ONNX Runtime; 
 
 ```bash
 pip install -e ".[desktop,server]"
-py -3 scripts/sync_design_ui.py
 set UPSCALE_BACKEND=onnx
 py -3 scripts/export_onnx.py 4x-spanx4-ch48
 py -3 desktop/app.py

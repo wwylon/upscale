@@ -4,7 +4,14 @@ from __future__ import annotations
 
 import re
 import shutil
+import sys
 from pathlib import Path
+
+if __name__ == "__main__" and "--force" not in sys.argv:
+    raise SystemExit(
+        "Refusing to run: this overwrites hand-edited ui/*.html from plan/design "
+        "(it drops i18n hooks and newer features). Pass --force only if you mean it."
+    )
 
 ROOT = Path(__file__).resolve().parents[1]
 DESIGN = ROOT / "plan" / "design"

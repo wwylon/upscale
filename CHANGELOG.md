@@ -6,6 +6,15 @@ this project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-11-11
+
+### Fixed
+
+- Windows desktop app crashed on startup (`signal only works in main thread`); the server now registers Ctrl+C handlers only on the main thread.
+- README no longer implies `upscale[slim]` removes PyTorch; the PyTorch-free build is the Windows desktop app.
+- Build scripts no longer run the design-sync step that overwrote `ui/`; `scripts/sync_design_ui.py` now requires `--force`.
+
+
 ## [0.5.0] - 2026-11-11
 
 ### Changed
