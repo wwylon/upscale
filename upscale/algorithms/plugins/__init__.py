@@ -21,7 +21,7 @@ _SKIP = frozenset({"native"})
 
 
 def _iter_plugin_modules() -> Iterable[str]:
-    import upscaler.algorithms.plugins as pkg
+    import upscale.algorithms.plugins as pkg
 
     for mod in pkgutil.iter_modules(pkg.__path__, pkg.__name__ + "."):
         short = mod.name.rsplit(".", 1)[-1]

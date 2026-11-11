@@ -6,8 +6,8 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from upscaler.presets import list_presets, resolve_option_preset, resolve_target_preset
-from upscaler.suggest import analyze_image, classify_kind, suggest_model
+from upscale.presets import list_presets, resolve_option_preset, resolve_target_preset
+from upscale.suggest import analyze_image, classify_kind, suggest_model
 
 
 @pytest.fixture

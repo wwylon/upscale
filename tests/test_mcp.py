@@ -6,7 +6,7 @@ import pytest
 
 fastmcp = pytest.importorskip("mcp.server.fastmcp")
 
-from upscaler.mcp_server import build_mcp, mcp_tool_catalog  # noqa: E402
+from upscale.mcp_server import build_mcp, mcp_tool_catalog  # noqa: E402
 
 
 def test_mcp_tool_catalog():

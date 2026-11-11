@@ -15,8 +15,8 @@ Canonical local gate is `verify` in `publish.manifest.yaml`:
 
 ```text
 uv sync --locked --extra dev --extra server --extra mcp
-uv run ruff check upscaler tests
-uv run mypy --follow-imports=silent upscaler/schema.py upscaler/job_prep.py upscaler/config.py upscaler/naming.py upscaler/api
+uv run ruff check upscale tests
+uv run mypy --follow-imports=silent upscale/schema.py upscale/job_prep.py upscale/config.py upscale/naming.py upscale/api
 uv run upscale --help
 uv run pytest -q
 uv run python scripts/cpu_smoke.py

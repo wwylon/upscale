@@ -11,7 +11,7 @@ import pytest
 from fastapi.testclient import TestClient
 from png_fixtures import TINY_PNG
 
-from upscaler.server import app
+from upscale.server import app
 
 
 @pytest.fixture
@@ -20,7 +20,7 @@ def client():
 
 
 def test_queue_full_returns_429(client: TestClient, monkeypatch: pytest.MonkeyPatch):
-    import upscaler.server as server
+    import upscale.server as server
 
     monkeypatch.setattr(server, "MAX_QUEUE", 1)
     started = threading.Event()
@@ -31,7 +31,7 @@ def test_queue_full_returns_429(client: TestClient, monkeypatch: pytest.MonkeyPa
         deadline = time.time() + 8
         while time.time() < deadline:
             if cfg.cancel_event is not None and cfg.cancel_event.is_set():
-                from upscaler.tiling import JobCancelled
+                from upscale.tiling import JobCancelled
 
                 raise JobCancelled()
             if release.is_set():
@@ -41,7 +41,7 @@ def test_queue_full_returns_429(client: TestClient, monkeypatch: pytest.MonkeyPa
         out.write_bytes(TINY_PNG)
         return out
 
-    with patch("upscaler.server.execute", side_effect=fake_execute):
+    with patch("upscale.server.execute", side_effect=fake_execute):
         r1 = client.post(
             "/api/jobs",
             files={"file": ("a.png", TINY_PNG, "image/png")},
@@ -60,7 +60,7 @@ def test_queue_full_returns_429(client: TestClient, monkeypatch: pytest.MonkeyPa
 
 
 def test_compare_waits_on_gpu_lock(client: TestClient):
-    import upscaler.server as server
+    import upscale.server as server
 
     held = threading.Event()
     release = threading.Event()
@@ -87,7 +87,7 @@ def test_compare_waits_on_gpu_lock(client: TestClient):
             }
         ]
 
-    with patch("upscaler.compare.compare_variants", side_effect=fake_compare):
+    with patch("upscale.compare.compare_variants", side_effect=fake_compare):
         r = client.post(
             "/api/compare",
             files={"file": ("t.png", TINY_PNG, "image/png")},

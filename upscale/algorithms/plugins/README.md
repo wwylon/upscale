@@ -9,14 +9,14 @@ Paper in the UI and in `GET /api/algorithms`.
 | Name | Extra | Role |
 | --- | --- | --- |
 | `texture_residual` | none | Lanczos structure + high-frequency residual |
-| `vectorize_scale` | `upscaler[vectorize]` (`vtracer` + `pyautotrace` + `resvg_py`) | SVG trace (VTracer or AutoTrace), then rasterize at target size |
+| `vectorize_scale` | `upscale[vectorize]` (`vtracer` + `pyautotrace` + `resvg_py`) | SVG trace (VTracer or AutoTrace), then rasterize at target size |
 
 See [papers.md](papers.md) for evaluation (DiWa / TOC-SR icebox; HiWave family out of scope).
 
 ## Hook
 
 ```python
-from upscaler.algorithms import register_algorithm
+from upscale.algorithms import register_algorithm
 
 def my_resize(img, target_w, target_h):
     ...  # HWC uint8 RGB → same

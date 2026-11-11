@@ -1,4 +1,4 @@
-"""CLI entry point for the upscaler."""
+"""CLI entry point for the upscale."""
 
 from __future__ import annotations
 
@@ -117,7 +117,7 @@ def _common_options(fn):
             help=(
                 "Classical / plugin resize instead of a neural model. "
                 "Built-in: nearest, bilinear, bicubic, lanczos2, lanczos3. "
-                "Paper: texture_residual, vectorize_scale (needs upscaler[vectorize]). "
+                "Paper: texture_residual, vectorize_scale (needs upscale[vectorize]). "
                 "Or any name registered via register_algorithm."
             ),
         ),
@@ -546,7 +546,7 @@ def serve_cmd(host: str, port: int) -> None:
         from .server import run_server
     except ImportError as exc:
         raise click.ClickException(
-            "Server extras required: pip install 'upscaler[server]'"
+            "Server extras required: pip install 'upscale[server]'"
         ) from exc
     try:
         run_server(host=host, port=port)
@@ -561,7 +561,7 @@ def mcp_cmd() -> None:
         from .mcp_server import run_stdio
     except ImportError as exc:
         raise click.ClickException(
-            "MCP extras required: pip install 'upscaler[mcp]'"
+            "MCP extras required: pip install 'upscale[mcp]'"
         ) from exc
     run_stdio()
 
@@ -600,7 +600,7 @@ def ui_cmd(host: str, port: int, share: bool) -> None:
         from .web import launch
     except ImportError as exc:
         raise click.ClickException(
-            "Gradio required: pip install 'upscaler[ui]'"
+            "Gradio required: pip install 'upscale[ui]'"
         ) from exc
     launch(host=host, port=port, share=share)
 

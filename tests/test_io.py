@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from upscaler.io_utils import (
+from upscale.io_utils import (
     load_rgba,
     load_rgba_with_meta,
     save_image,
@@ -69,7 +69,7 @@ def test_write_display_preview_noop_when_small(tmp_path: Path):
 
 
 def test_vector_inputs_rejected():
-    from upscaler.io_utils import is_vector_input, require_raster_suffix
+    from upscale.io_utils import is_vector_input, require_raster_suffix
 
     assert is_vector_input("logo.svg")
     assert is_vector_input("logo.SVGZ")

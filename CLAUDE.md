@@ -2,8 +2,8 @@
 
 Public checkout guidance. Prefer [AGENTS.md](AGENTS.md) and [docs/](docs/).
 
-- Package: `upscaler/` (`cli.py`, `pipeline.py`, `tiling.py`, `models.py`, `server.py`, …)
-- Web UI: `ui/` + FastAPI in `upscaler/server.py` / `upscaler/api/`
+- Package: `upscale/` (`cli.py`, `pipeline.py`, `tiling.py`, `models.py`, `server.py`, …)
+- Web UI: `ui/` + FastAPI in `upscale/server.py` / `upscale/api/`
 - Desktop: `desktop/` (slim ONNX path); Android skeleton: `android/`
 - Docs hub: [docs/api.md](docs/api.md), help under `docs/help/`
 

@@ -1,0 +1,6 @@
+Third-party notices
+===================
+
+Third-party model weights (Real-ESRGAN, HAT, SPAN, and community checkpoints)
+remain under their own licenses. Review each model's license before redistribution.
+OpenCV, ONNX Runtime, PyTorch, and other dependencies use their respective licenses.

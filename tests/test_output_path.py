@@ -8,10 +8,10 @@ import numpy as np
 from click.testing import CliRunner
 from PIL import Image
 
-from upscaler.cli import cli
-from upscaler.config import UpscaleConfig
-from upscaler.engine import execute
-from upscaler.schema import JobSettings, NamePattern
+from upscale.cli import cli
+from upscale.config import UpscaleConfig
+from upscale.engine import execute
+from upscale.schema import JobSettings, NamePattern
 
 
 def _tiny_png(path: Path) -> Path:

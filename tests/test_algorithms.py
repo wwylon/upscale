@@ -8,17 +8,17 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from upscaler.algorithms import (
+from upscale.algorithms import (
     list_algorithm_meta,
     list_algorithms,
     register_algorithm,
     resize_with_algorithm,
     unregister_algorithm,
 )
-from upscaler.algorithms.classical import BUILTIN_ALGORITHMS, backend_name
-from upscaler.algorithms.plugins.texture_residual import texture_residual_resize
-from upscaler.config import UpscaleConfig
-from upscaler.engine import execute
+from upscale.algorithms.classical import BUILTIN_ALGORITHMS, backend_name
+from upscale.algorithms.plugins.texture_residual import texture_residual_resize
+from upscale.config import UpscaleConfig
+from upscale.engine import execute
 
 
 def _checker(h: int = 16, w: int = 16) -> np.ndarray:
@@ -91,7 +91,7 @@ def test_texture_residual_shape_and_strength_zero():
 
 
 def test_texture_residual_no_torch_import():
-    from upscaler.algorithms.plugins import texture_residual as tr
+    from upscale.algorithms.plugins import texture_residual as tr
 
     src = Path(tr.__file__).read_text(encoding="utf-8")
     assert "import torch" not in src
@@ -198,8 +198,8 @@ def test_execute_vectorize_scale_rgba(tmp_path: Path):
 
 def test_vectorize_params_change_output():
     pytest.importorskip("vtracer")
-    from upscaler.algorithms.plugins.vectorize_scale import vectorize_scale_resize
-    from upscaler.schema import VectorizeSettings
+    from upscale.algorithms.plugins.vectorize_scale import vectorize_scale_resize
+    from upscale.schema import VectorizeSettings
 
     img = np.zeros((48, 48, 3), dtype=np.uint8)
     img[:, :] = (245, 245, 245)
@@ -223,7 +223,7 @@ def test_vectorize_params_change_output():
 
 def test_vectorize_autotrace_engine():
     pytest.importorskip("autotrace")
-    from upscaler.algorithms.plugins.vectorize_scale import vectorize_scale_resize
+    from upscale.algorithms.plugins.vectorize_scale import vectorize_scale_resize
 
     img = np.zeros((40, 40, 3), dtype=np.uint8)
     img[:, :] = (250, 250, 250)

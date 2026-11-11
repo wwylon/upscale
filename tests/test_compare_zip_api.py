@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 from png_fixtures import TINY_PNG
 
-from upscaler.server import app
+from upscale.server import app
 
 
 @pytest.fixture
@@ -55,7 +55,7 @@ def test_api_compare_mocked(client: TestClient, tmp_path: Path):
             )
         return out
 
-    with patch("upscaler.compare.compare_variants", side_effect=fake_compare):
+    with patch("upscale.compare.compare_variants", side_effect=fake_compare):
         r = client.post(
             "/api/compare",
             files={"file": ("t.png", TINY_PNG, "image/png")},
@@ -100,7 +100,7 @@ def test_api_compare_cancel(client: TestClient):
             time.sleep(0.05)
         return []
 
-    with patch("upscaler.compare.compare_variants", side_effect=slow_compare):
+    with patch("upscale.compare.compare_variants", side_effect=slow_compare):
         r = client.post(
             "/api/compare",
             files={"file": ("t.png", TINY_PNG, "image/png")},
@@ -124,7 +124,7 @@ def test_api_compare_cancel(client: TestClient):
 
 
 def test_build_variants_mix():
-    from upscaler.compare import build_variants
+    from upscale.compare import build_variants
 
     vs = build_variants(
         models=["RealESRGAN_x4plus"],
@@ -145,7 +145,7 @@ def test_api_zip_empty(client: TestClient):
 
 def test_api_zip_from_disk(client: TestClient, tmp_path: Path, monkeypatch):
     """Zip succeeds using on-disk result.* even when job is not in memory."""
-    import upscaler.server as srv
+    import upscale.server as srv
 
     monkeypatch.setattr(srv, "JOBS_ROOT", tmp_path)
     jid = "a" * 32

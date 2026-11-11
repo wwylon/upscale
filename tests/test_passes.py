@@ -1,6 +1,6 @@
 import pytest
 
-from upscaler.pipeline import compute_passes
+from upscale.pipeline import compute_passes
 
 
 @pytest.mark.parametrize(

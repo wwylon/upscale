@@ -7,11 +7,11 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from upscaler.config import UpscaleConfig
-from upscaler.engine import execute
-from upscaler.filters import unwrap_seamless
-from upscaler.job_prep import seamless_unwrap_scale
-from upscaler.schema import FilterSettings
+from upscale.config import UpscaleConfig
+from upscale.engine import execute
+from upscale.filters import unwrap_seamless
+from upscale.job_prep import seamless_unwrap_scale
+from upscale.schema import FilterSettings
 
 
 def test_seamless_unwrap_scale_uses_padded_geometry():
@@ -26,7 +26,7 @@ def test_seamless_unwrap_scale_uses_padded_geometry():
 
 
 def test_seamless_unwrap_non_integer_scale_margins():
-    from upscaler.job_prep import seamless_unwrap_margins
+    from upscale.job_prep import seamless_unwrap_margins
 
     content_w, content_h, pad = 100, 100, 16
     scale = 2.5
@@ -112,7 +112,7 @@ def test_width_height_exact_output(tmp_path: Path):
 
 
 def test_estimates_match_engine_wh():
-    from upscaler.estimates import output_dimensions
+    from upscale.estimates import output_dimensions
 
     w, h, eff = output_dimensions(100, 100, width=150, height=200)
     assert (w, h) == (150, 200)

@@ -7,9 +7,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from upscaler.backends import resolve_backend
-from upscaler.backends.onnx_rt import make_onnx_infer_fn, onnx_path_for
-from upscaler.tiling import tiled_upscale
+from upscale.backends import resolve_backend
+from upscale.backends.onnx_rt import make_onnx_infer_fn, onnx_path_for
+from upscale.tiling import tiled_upscale
 
 
 def test_resolve_backend_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -65,11 +65,11 @@ def test_execute_dispatches_to_onnx(monkeypatch: pytest.MonkeyPatch, tmp_path: P
         return out
 
     monkeypatch.setattr(
-        "upscaler.backends.onnx_rt.execute_onnx",
+        "upscale.backends.onnx_rt.execute_onnx",
         fake_execute_onnx,
     )
-    from upscaler.config import UpscaleConfig
-    from upscaler.engine import execute
+    from upscale.config import UpscaleConfig
+    from upscale.engine import execute
 
     src = tmp_path / "in.png"
     # minimal PNG via PIL

@@ -12,8 +12,8 @@ from PIL import Image
 
 
 def _classical(td: Path) -> Path:
-    from upscaler.config import UpscaleConfig
-    from upscaler.engine import execute
+    from upscale.config import UpscaleConfig
+    from upscale.engine import execute
 
     src = td / "in.png"
     out = td / "nearest.png"
@@ -43,9 +43,9 @@ def _weight_backed(root: Path, src: Path, td: Path) -> None:
         print("SKIP weight-backed smoke (no models/*.pth)")
         return
 
-    from upscaler.config import UpscaleConfig
-    from upscaler.engine import execute
-    from upscaler.models import FAST_MODEL, MODELS
+    from upscale.config import UpscaleConfig
+    from upscale.engine import execute
+    from upscale.models import FAST_MODEL, MODELS
 
     named = [p for p in weights if p.stem in MODELS]
     preferred = models_dir / f"{FAST_MODEL}.pth"

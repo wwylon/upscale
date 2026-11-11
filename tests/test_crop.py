@@ -8,9 +8,9 @@ from unittest.mock import patch
 import numpy as np
 from PIL import Image
 
-from upscaler.config import UpscaleConfig
-from upscaler.engine import execute
-from upscaler.schema import FilterSettings
+from upscale.config import UpscaleConfig
+from upscale.engine import execute
+from upscale.schema import FilterSettings
 
 
 def _write_png(path: Path, w: int = 100, h: int = 80) -> None:
@@ -44,10 +44,10 @@ def test_crop_scales_region_only(tmp_path: Path) -> None:
         mid_pass_previews=False,
     )
     with (
-        patch("upscaler.engine.ensure_model", return_value=tmp_path / "fake.pth"),
-        patch("upscaler.engine.load_model", return_value=object()),
-        patch("upscaler.engine.resolve_model_scale", return_value=4),
-        patch("upscaler.engine.run", side_effect=fake_run),
+        patch("upscale.engine.ensure_model", return_value=tmp_path / "fake.pth"),
+        patch("upscale.engine.load_model", return_value=object()),
+        patch("upscale.engine.resolve_model_scale", return_value=4),
+        patch("upscale.engine.run", side_effect=fake_run),
     ):
         result = execute(cfg, echo=lambda _m: None)
 
@@ -82,11 +82,11 @@ def test_crop_applies_pre_filters(tmp_path: Path) -> None:
         mid_pass_previews=False,
     )
     with (
-        patch("upscaler.engine.ensure_model", return_value=tmp_path / "fake.pth"),
-        patch("upscaler.engine.load_model", return_value=object()),
-        patch("upscaler.engine.resolve_model_scale", return_value=2),
-        patch("upscaler.engine.run", side_effect=fake_run),
-        patch("upscaler.engine.compute_passes", return_value=1),
+        patch("upscale.engine.ensure_model", return_value=tmp_path / "fake.pth"),
+        patch("upscale.engine.load_model", return_value=object()),
+        patch("upscale.engine.resolve_model_scale", return_value=2),
+        patch("upscale.engine.run", side_effect=fake_run),
+        patch("upscale.engine.compute_passes", return_value=1),
     ):
         execute(cfg, echo=lambda _m: None)
     assert seen["pre"]

@@ -42,7 +42,7 @@ echo.
 
 rem Start serve in the background of this console, wait for HTTP 200, then open the browser.
 rem Keeps server logs in this window; Ctrl+C / closing the window stops the server.
-start /b "" %PY_LAUNCH% -m upscaler serve --host 127.0.0.1 --port %PORT%
+start /b "" %PY_LAUNCH% -m upscale serve --host 127.0.0.1 --port %PORT%
 
 powershell -NoProfile -Command ^
   "$url = '%URL%';" ^

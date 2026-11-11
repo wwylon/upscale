@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from upscaler.help_content import get_help, topic_path
-from upscaler.server import app
+from upscale.help_content import get_help, topic_path
+from upscale.server import app
 
 
 def test_topic_path_rejects_traversal():
@@ -25,7 +25,7 @@ def test_get_help_valid():
 
 def test_mcp_get_help_returns_markdown():
     """MCP get_help uses this import (`load_help`) and returns markdown."""
-    from upscaler.mcp_server import load_help
+    from upscale.mcp_server import load_help
 
     body = load_help("mcp", "en")
     assert isinstance(body, str)
@@ -48,7 +48,7 @@ def test_api_locale_traversal_404():
 
 def test_docs_dir_override_still_confined(tmp_path, monkeypatch):
     """UPSCALE_DOCS_DIR cannot escape topic/lang confinement."""
-    import upscaler.help_content as hc
+    import upscale.help_content as hc
 
     docs = tmp_path / "docs"
     (docs / "help").mkdir(parents=True)

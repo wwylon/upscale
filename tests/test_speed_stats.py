@@ -7,9 +7,9 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from upscaler import speed_stats as ss
-from upscaler.estimates import estimate_time_seconds
-from upscaler.server import app
+from upscale import speed_stats as ss
+from upscale.estimates import estimate_time_seconds
+from upscale.server import app
 
 
 @pytest.fixture()

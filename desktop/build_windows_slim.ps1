@@ -19,7 +19,7 @@ py -3 scripts\sync_design_ui.py
 
 Write-Host "== Slim deps ==" -ForegroundColor Cyan
 py -3 -m pip install "onnxruntime>=1.17" "fastapi>=0.110" "uvicorn[standard]" "python-multipart" "pywebview>=5.0" pyinstaller -q
-py -3 -c "import os; os.environ['UPSCALE_BACKEND']='onnx'; import onnxruntime, fastapi, webview; from upscaler.backends import resolve_backend; assert resolve_backend()=='onnx'; print('slim imports ok', onnxruntime.__version__)"
+py -3 -c "import os; os.environ['UPSCALE_BACKEND']='onnx'; import onnxruntime, fastapi, webview; from upscale.backends import resolve_backend; assert resolve_backend()=='onnx'; print('slim imports ok', onnxruntime.__version__)"
 
 Write-Host "== PyInstaller slim onedir ==" -ForegroundColor Cyan
 if (Test-Path dist\Upscale) { Remove-Item -Recurse -Force dist\Upscale }

@@ -543,5 +543,11 @@
   "server.job.cannot_resume_checkpoint": "A job that is {state} cannot resume from its checkpoint.",
   "server.model.shadows_builtin": "A built-in model is already named {name}.",
   "server.model.bad_extension": "Unsupported weights file type: {ext}.",
-  "server.model.unknown": "Unknown model: {name}."
+  "server.model.unknown": "Unknown model: {name}.",
+  "server.compare.job_ids_required": "Choose at least one job to compare.",
+  "server.compare.too_many_jobs": "Too many jobs selected for one comparison.",
+  "server.compare.bad_body": "The comparison request is invalid: {reason}",
+  "server.job.bad_settings": "The settings are not valid JSON: {reason}",
+  "server.job.resuming": "Resuming from the checkpoint.",
+  "server.job.bad_mode": "The mode must be \"seam\" or \"diff\"."
 }

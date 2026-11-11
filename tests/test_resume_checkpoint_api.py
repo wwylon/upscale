@@ -12,10 +12,10 @@ import pytest
 from fastapi.testclient import TestClient
 from png_fixtures import TINY_PNG
 
-import upscaler.server as server
-from upscaler.checkpoint import StripCheckpoint, save_strip_checkpoint
-from upscaler.schema import JobSettings
-from upscaler.server import JobRecord, JobState, app
+import upscale.server as server
+from upscale.checkpoint import StripCheckpoint, save_strip_checkpoint
+from upscale.schema import JobSettings
+from upscale.server import JobRecord, JobState, app
 
 
 @pytest.fixture
@@ -117,14 +117,14 @@ def test_list_and_resume_checkpoint(client: TestClient, tmp_path: Path):
         started.set()
         release.wait(timeout=5)
         if cfg.cancel_event is not None and cfg.cancel_event.is_set():
-            from upscaler.tiling import JobCancelled
+            from upscale.tiling import JobCancelled
 
             raise JobCancelled()
         if kwargs.get("on_progress"):
             kwargs["on_progress"]({"type": "done", "pct": 1.0, "message": "done"})
         return out
 
-    with patch("upscaler.server.execute", side_effect=fake_execute):
+    with patch("upscale.server.execute", side_effect=fake_execute):
         r = client.post(
             "/api/jobs",
             files={"file": ("test.png", TINY_PNG, "image/png")},
@@ -162,7 +162,7 @@ def test_list_and_resume_checkpoint(client: TestClient, tmp_path: Path):
                 kwargs["on_progress"]({"type": "done", "pct": 1.0, "message": "done"})
             return out
 
-        with patch("upscaler.server.execute", side_effect=fake_resume):
+        with patch("upscale.server.execute", side_effect=fake_resume):
             res = client.post(f"/api/jobs/{job_id}/resume-checkpoint")
             assert res.status_code == 200, res.text
             assert res.json()["status"] == "queued"
@@ -238,7 +238,7 @@ def test_resume_checkpoint_orphaned_from_disk(client: TestClient, tmp_path: Path
             kwargs["on_progress"]({"type": "done", "pct": 1.0, "message": "done"})
         return out
 
-    with patch("upscaler.server.execute", side_effect=fake_execute):
+    with patch("upscale.server.execute", side_effect=fake_execute):
         res = client.post(f"/api/jobs/{job_id}/resume-checkpoint")
         assert res.status_code == 200, res.text
         for _ in range(100):

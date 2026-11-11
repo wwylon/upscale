@@ -17,7 +17,7 @@ Bootstrap for agents working on the **public** upscale tree.
 
 ```text
 pip install -e ".[dev,server,mcp]"
-ruff check upscaler tests
+ruff check upscale tests
 pytest -q
 python scripts/cpu_smoke.py
 ```

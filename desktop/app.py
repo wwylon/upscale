@@ -52,7 +52,7 @@ def _prepare_env() -> None:
 
 
 def _start_server() -> None:
-    from upscaler.server import run_server
+    from upscale.server import run_server
 
     run_server(host=HOST, port=PORT)
 
@@ -63,7 +63,7 @@ def main() -> None:
         import webview
     except ImportError as exc:
         raise SystemExit(
-            "Desktop extras required: pip install 'upscaler[desktop,server]'\n"
+            "Desktop extras required: pip install 'upscale[desktop,server]'\n"
             f"({exc})"
         ) from exc
 

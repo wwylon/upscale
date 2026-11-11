@@ -74,7 +74,7 @@ if _models_override:
 
     _models_mod.DEFAULT_WEIGHTS_DIR = Path(_models_override)
 
-app = FastAPI(title="Upscale", version="0.4.0")
+app = FastAPI(title="Upscale", version="0.5.0")
 
 
 class JobState(str, Enum):
@@ -989,7 +989,7 @@ _compare_lock = threading.Lock()
 
 
 
-from upscaler.api import include_routers
+from upscale.api import include_routers
 
 include_routers(app)
 

@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 from png_fixtures import TINY_PNG
 
-from upscaler.server import app
+from upscale.server import app
 
 
 @pytest.fixture
@@ -96,7 +96,7 @@ def test_create_job_mock_execute(client: TestClient, tmp_path: Path):
             kwargs["on_progress"]({"type": "done", "pct": 1.0, "message": "done"})
         return out
 
-    with patch("upscaler.server.execute", side_effect=fake_execute):
+    with patch("upscale.server.execute", side_effect=fake_execute):
         r = client.post(
             "/api/jobs",
             files={"file": ("test.png", TINY_PNG, "image/png")},
@@ -140,7 +140,7 @@ def test_job_with_crop_and_filters(client: TestClient, tmp_path: Path):
         "crop": {"x": 0, "y": 0, "w": 32, "h": 32},
         "filters": {"pre_denoise": 0.4, "jpeg_clean": 0.0, "edge": 0.2, "grain": 0.0},
     }
-    with patch("upscaler.server.execute", side_effect=fake_execute):
+    with patch("upscale.server.execute", side_effect=fake_execute):
         r = client.post(
             "/api/jobs",
             files={"file": ("test.png", TINY_PNG, "image/png")},
@@ -169,7 +169,7 @@ def test_pause_cancel_endpoints(client: TestClient, tmp_path: Path):
             kwargs["on_progress"]({"type": "done", "pct": 1.0, "message": "done"})
         return out
 
-    with patch("upscaler.server.execute", side_effect=fake_execute):
+    with patch("upscale.server.execute", side_effect=fake_execute):
         r = client.post(
             "/api/jobs",
             files={"file": ("test.png", TINY_PNG, "image/png")},
@@ -224,9 +224,9 @@ def test_api_rejects_svg(client: TestClient):
 
 
 def test_api_models_add(client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    import upscaler.api.models_routes as models_routes
-    from upscaler import models as models_mod
-    from upscaler import server as server_mod
+    import upscale.api.models_routes as models_routes
+    from upscale import models as models_mod
+    from upscale import server as server_mod
 
     wdir = tmp_path / "weights"
     wdir.mkdir()
@@ -249,7 +249,7 @@ def test_api_models_add(client: TestClient, tmp_path: Path, monkeypatch: pytest.
 
 
 def test_api_models_add_rejects_builtin_name(client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    from upscaler import models as models_mod
+    from upscale import models as models_mod
 
     wdir = tmp_path / "weights"
     wdir.mkdir()
@@ -334,7 +334,7 @@ def test_job_status_endpoint(client: TestClient, tmp_path: Path):
             kwargs["on_progress"]({"type": "done", "pct": 1.0, "message": "done"})
         return out
 
-    with patch("upscaler.server.execute", side_effect=fake_execute):
+    with patch("upscale.server.execute", side_effect=fake_execute):
         r = client.post(
             "/api/jobs",
             files={"file": ("test.png", TINY_PNG, "image/png")},
@@ -362,7 +362,7 @@ def test_resume_emits_resumed_type(client: TestClient, tmp_path: Path):
         release.wait(timeout=2)
         return out
 
-    with patch("upscaler.server.execute", side_effect=fake_execute):
+    with patch("upscale.server.execute", side_effect=fake_execute):
         r = client.post(
             "/api/jobs",
             files={"file": ("test.png", TINY_PNG, "image/png")},
@@ -379,7 +379,7 @@ def test_resume_emits_resumed_type(client: TestClient, tmp_path: Path):
 
 def test_display_serves_from_disk_without_memory(client: TestClient, tmp_path: Path):
     """After process restart, /display must still serve job_dir/display.png."""
-    import upscaler.server as server
+    import upscale.server as server
 
     job_id = "diskonlydisplay01"
     job_dir = server.JOBS_ROOT / job_id
@@ -407,7 +407,7 @@ def test_sse_done_display_ready(client: TestClient, tmp_path: Path):
             kwargs["on_progress"]({"type": "done", "pct": 1.0, "message": "engine"})
         return out
 
-    with patch("upscaler.server.execute", side_effect=fake_execute):
+    with patch("upscale.server.execute", side_effect=fake_execute):
         r = client.post(
             "/api/jobs",
             files={"file": ("test.png", TINY_PNG, "image/png")},
@@ -445,7 +445,7 @@ def test_sse_pause_resume_cancel_sequence(client: TestClient, tmp_path: Path):
         deadline = time.time() + 5
         while time.time() < deadline:
             if cfg.cancel_event is not None and cfg.cancel_event.is_set():
-                from upscaler.tiling import JobCancelled
+                from upscale.tiling import JobCancelled
 
                 raise JobCancelled()
             if cfg.pause_event is not None and cfg.pause_event.is_set() and on_progress:
@@ -457,7 +457,7 @@ def test_sse_pause_resume_cancel_sequence(client: TestClient, tmp_path: Path):
             on_progress({"type": "done", "pct": 1.0, "message": "done"})
         return out
 
-    with patch("upscaler.server.execute", side_effect=fake_execute):
+    with patch("upscale.server.execute", side_effect=fake_execute):
         r = client.post(
             "/api/jobs",
             files={"file": ("test.png", TINY_PNG, "image/png")},
@@ -498,7 +498,7 @@ def test_job_quality_seam_and_diff(client: TestClient, tmp_path: Path):
             kwargs["on_progress"]({"type": "done", "pct": 1.0, "message": "done"})
         return out
 
-    with patch("upscaler.server.execute", side_effect=fake_execute):
+    with patch("upscale.server.execute", side_effect=fake_execute):
         r = client.post(
             "/api/jobs",
             files={"file": ("test.png", TINY_PNG, "image/png")},

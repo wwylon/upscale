@@ -7,8 +7,8 @@ from typing import Any
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
-from upscaler.api import deps as D
-from upscaler.models import (
+from upscale.api import deps as D
+from upscale.models import (
     DEFAULT_WEIGHTS_DIR,
     add_external_model,
     ensure_model,
@@ -52,7 +52,7 @@ async def api_models_upload(
 
     import hashlib
 
-    from upscaler.models import MODELS
+    from upscale.models import MODELS
 
     raw_name = (name or Path(file.filename or "model").stem).strip()
     try:

@@ -1,4 +1,4 @@
-# PyInstaller stub for macOS — build on a Mac with pywebview + upscaler[desktop,server]
+# PyInstaller stub for macOS — build on a Mac with pywebview + upscale[desktop,server]
 #
 #   pyinstaller desktop/upscale-macos.spec
 #
@@ -17,7 +17,7 @@ a = Analysis(
         ('locales', 'locales'),
         ('docs/help', 'docs/help'),
     ],
-    hiddenimports=['upscaler.server', 'uvicorn', 'webview'],
+    hiddenimports=['upscale.server', 'uvicorn', 'webview'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

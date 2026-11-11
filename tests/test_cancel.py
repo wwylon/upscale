@@ -5,7 +5,7 @@ import threading
 import numpy as np
 import pytest
 
-from upscaler.tiling import JobCancelled, tiled_upscale
+from upscale.tiling import JobCancelled, tiled_upscale
 
 
 def test_cancel_between_tiles():

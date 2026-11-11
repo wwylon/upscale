@@ -27,7 +27,7 @@ def main() -> None:
 
     import torch
 
-    from upscaler.models import DEFAULT_WEIGHTS_DIR, ensure_model, load_model, registry_scale
+    from upscale.models import DEFAULT_WEIGHTS_DIR, ensure_model, load_model, registry_scale
 
     name = args.model
     weights = Path(name)

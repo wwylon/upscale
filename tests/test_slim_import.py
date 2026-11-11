@@ -20,11 +20,11 @@ def test_server_imports_without_torch(monkeypatch):
 
     # Fresh import of modules that used to pull torch at top level
     for name in list(sys.modules):
-        if name.startswith("upscaler.pipeline") or name.startswith("upscaler.server"):
+        if name.startswith("upscale.pipeline") or name.startswith("upscale.server"):
             del sys.modules[name]
 
-    import upscaler.pipeline as pipeline
-    import upscaler.server as server
+    import upscale.pipeline as pipeline
+    import upscale.server as server
 
     assert pipeline.compute_passes(4, 4) == 1
     assert server.app.title == "Upscale"

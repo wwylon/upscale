@@ -7,7 +7,7 @@ import time
 
 import numpy as np
 
-from upscaler.tiling import tiled_upscale
+from upscale.tiling import tiled_upscale
 
 
 def test_pause_blocks_then_resumes():

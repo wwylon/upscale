@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from upscaler.models import model_status
+from upscale.models import model_status
 
 
 def test_builtin_license_fields():
-    from upscaler.models import MODELS
+    from upscale.models import MODELS
 
     assert MODELS["RealESRGAN_x4plus"]["license"] == "BSD-3-Clause-like"
     assert "non-commercial" in MODELS["4x-UltraSharp"]["license"]
@@ -19,7 +19,7 @@ def test_model_status_unknown_is_failed():
 
 
 def test_model_status_builtin_not_downloaded(tmp_path: Path, monkeypatch):
-    from upscaler import models as m
+    from upscale import models as m
 
     monkeypatch.setattr(m, "DEFAULT_WEIGHTS_DIR", tmp_path)
     st = model_status("RealESRGAN_x4plus", tmp_path)
@@ -29,7 +29,7 @@ def test_model_status_builtin_not_downloaded(tmp_path: Path, monkeypatch):
 
 
 def test_prune_stale_path_only_external(tmp_path: Path):
-    from upscaler.models import (
+    from upscale.models import (
         load_user_registry,
         prune_stale_external_models,
         save_user_registry,

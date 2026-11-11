@@ -2,7 +2,7 @@
 #
 #   pyinstaller desktop/upscale.spec
 #
-# Expected data files: ui/, locales/, docs/help/, upscaler package.
+# Expected data files: ui/, locales/, docs/help/, upscale package.
 # Torch + models are large; ship models separately or download on first run.
 
 # -*- mode: python ; coding: utf-8 -*-
@@ -18,7 +18,7 @@ a = Analysis(
         ('locales', 'locales'),
         ('docs/help', 'docs/help'),
     ],
-    hiddenimports=['upscaler.server', 'uvicorn', 'webview'],
+    hiddenimports=['upscale.server', 'uvicorn', 'webview'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

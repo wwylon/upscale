@@ -15,7 +15,7 @@
     return n > 1 ? n / 100 : n;
   }
 
-  // Server error details (upscaler/api, listed by `llm-localize server-copy`) -> catalogue keys.
+  // Server error details (upscale/api, listed by `llm-localize server-copy`) -> catalogue keys.
   // Unknown text is shown as the server sent it.
   const SERVER_TEXT = {
     "No completed results to zip": () => i18n.t("server.compare.nothing_to_zip"),
@@ -32,6 +32,10 @@
     "Input file missing for this job": () => i18n.t("server.job.input_missing"),
     "Input image is corrupt or unreadable; checkpoint cleared. Start a new upscale instead.": () => i18n.t("server.job.input_corrupt"),
     "Job is already active": () => i18n.t("server.job.already_active"),
+    "job_ids required": () => i18n.t("server.compare.job_ids_required"),
+    "too many jobs": () => i18n.t("server.compare.too_many_jobs"),
+    "resuming from checkpoint": () => i18n.t("server.job.resuming"),
+    "mode must be seam or diff": () => i18n.t("server.job.bad_mode"),
     "Result not ready": () => i18n.t("server.job.result_not_ready"),
     "Input not found": () => i18n.t("server.job.input_not_found"),
     "Preview not found": () => i18n.t("server.job.preview_missing"),
@@ -39,6 +43,8 @@
     "Pass preview not found": () => i18n.t("server.job.pass_preview_missing"),
   };
   const SERVER_PATTERNS = [
+    [/^Invalid compare body: (.+)$/s, (m) => i18n.t("server.compare.bad_body", { reason: m[1] })],
+    [/^Invalid settings JSON: (.+)$/s, (m) => i18n.t("server.job.bad_settings", { reason: m[1] })],
     [/^Upload exceeds limit of (\d+) bytes$/, (m) => i18n.t("server.upload.too_big", { bytes: m[1] })],
     [/^Job queue full \(max (\d+)\)$/, (m) => i18n.t("server.job.queue_full", { max: m[1] })],
     [/^Cannot pause job in state (\w+)$/, (m) => i18n.t("server.job.cannot_pause", { state: m[1] })],

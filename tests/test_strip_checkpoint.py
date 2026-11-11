@@ -6,13 +6,13 @@ from pathlib import Path
 
 import numpy as np
 
-from upscaler.checkpoint import (
+from upscale.checkpoint import (
     StripCheckpoint,
     clear_strip_checkpoint,
     load_strip_checkpoint,
     save_strip_checkpoint,
 )
-from upscaler.tiling import tiled_upscale
+from upscale.tiling import tiled_upscale
 
 
 def test_strip_checkpoint_roundtrip(tmp_path: Path):
@@ -124,7 +124,7 @@ def test_tiled_upscale_resume_pixel_identical(tmp_path: Path):
         if i >= 3:
             cancel.set()
 
-    from upscaler.tiling import JobCancelled
+    from upscale.tiling import JobCancelled
 
     try:
         tiled_upscale(

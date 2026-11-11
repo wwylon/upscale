@@ -14,8 +14,8 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 
-from upscaler.api import deps as D
-from upscaler.tiling import JobCancelled
+from upscale.api import deps as D
+from upscale.tiling import JobCancelled
 
 router = APIRouter()
 
@@ -96,7 +96,7 @@ def _compare_worker(
     device: str,
     half: bool,
 ) -> None:
-    from upscaler.compare import compare_variants
+    from upscale.compare import compare_variants
 
     try:
         # Share the process-wide execute lock so compare never overlaps a job.
@@ -141,8 +141,8 @@ async def api_compare(
     body: str = Form("{}"),
 ) -> dict[str, Any]:
     """Start a crop compare; poll ``GET /api/compare/{id}/status`` until done."""
-    from upscaler.compare import build_variants
-    from upscaler.schema import CropRect
+    from upscale.compare import build_variants
+    from upscale.schema import CropRect
 
     try:
         raw = json.loads(body) if body.strip() else {}

@@ -1,6 +1,6 @@
 import numpy as np
 
-from upscaler.tiling import _tile_starts, make_tile_weight, tiled_upscale
+from upscale.tiling import _tile_starts, make_tile_weight, tiled_upscale
 
 
 def test_tile_starts_cover_full_length():

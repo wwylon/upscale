@@ -21,7 +21,7 @@ DEFAULT_RELEASES_URL = os.environ.get("UPSCALE_RELEASES_URL", "").strip()
 
 def package_version() -> str:
     try:
-        return metadata.version("upscaler")
+        return metadata.version("upscale")
     except metadata.PackageNotFoundError:
         from . import __version__
 

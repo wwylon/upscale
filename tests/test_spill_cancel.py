@@ -9,8 +9,8 @@ import numpy as np
 import pytest
 import torch
 
-from upscaler import pipeline
-from upscaler.tiling import JobCancelled
+from upscale import pipeline
+from upscale.tiling import JobCancelled
 
 
 def _x4(patch: np.ndarray) -> np.ndarray:

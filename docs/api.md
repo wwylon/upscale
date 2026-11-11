@@ -66,7 +66,7 @@ Limits (env override): `UPSCALE_MAX_UPLOAD_BYTES`, `UPSCALE_MAX_QUEUE`, `UPSCALE
 ## MCP (stdio)
 
 ```bash
-pip install 'upscaler[mcp]'
+pip install 'upscale[mcp]'
 upscale mcp
 ```
 

@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import numpy as np
 
-from upscaler.filters import (
+from upscale.filters import (
     any_post_filters,
     any_pre_filters,
     apply_post_filters,
     apply_pre_filters,
     estimate_time_factor,
 )
-from upscaler.schema import FilterSettings
+from upscale.schema import FilterSettings
 
 
 def test_filters_change_pixels():

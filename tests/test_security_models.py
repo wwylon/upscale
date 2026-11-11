@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from upscaler.models import validate_download_url, validate_model_name
-from upscaler.naming import resolve_output_path
-from upscaler.schema import NamePattern
+from upscale.models import validate_download_url, validate_model_name
+from upscale.naming import resolve_output_path
+from upscale.schema import NamePattern
 
 
 def test_validate_model_name_rejects_traversal():
@@ -39,7 +39,7 @@ def test_validate_download_url_blocks_non_https_and_private():
 def test_api_rejects_evil_model_name():
     from fastapi.testclient import TestClient
 
-    from upscaler.server import app
+    from upscale.server import app
 
     client = TestClient(app)
     res = client.post(

@@ -1,17 +1,29 @@
 # upscale
 
+[![CI](https://github.com/wwylon/upscale/actions/workflows/ci.yml/badge.svg)](https://github.com/wwylon/upscale/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Local AI image upscaler. Chains Real-ESRGAN passes (via [spandrel](https://github.com/chaiNNer-org/spandrel)) to reach any target scale, with feather-blended overlapping tiles so large outputs have no seams. Runs on CPU or an NVIDIA GPU; nothing leaves your machine except the one-time model download.
+Local AI image upscale. Chains Real-ESRGAN passes (via [spandrel](https://github.com/chaiNNer-org/spandrel)) to reach any target scale, with feather-blended overlapping tiles so large outputs have no seams. Runs on CPU or an NVIDIA GPU; nothing leaves your machine except the one-time model download.
 
 ![upscale hero](docs/assets/hero.jpg)
 
-> Not related to other projects named "upscaler" on GitHub or PyPI. This package installs as `upscaler` and provides the `upscale` command.
+![Before/after: 160px source upscaled 4x](docs/assets/demo.gif)
+
+> Not related to other projects named "upscaler" on GitHub or PyPI. The package, the import name and the command are all `upscale`.
 
 ## Install
 
 ```bash
+pip install "git+https://github.com/wwylon/upscale.git"   # or: pipx install git+https://github.com/wwylon/upscale.git
+```
+
+The default install pulls PyTorch (large, slow first install). For a lighter ONNX Runtime-only setup without PyTorch use the `slim` extra: `pip install "upscale[slim] @ git+https://github.com/wwylon/upscale.git"`.
+
+From a clone:
+
+```bash
 pip install -e .
+pip install -e ".[slim]"      # no PyTorch (ONNX Runtime)
 pip install -e ".[server]"    # web UI + job API
 pip install -e ".[mcp]"       # MCP tools for agents
 ```
@@ -31,7 +43,7 @@ upscale serve                    # local web UI at http://127.0.0.1:8787/en/
 upscale mcp                      # MCP tools over stdio
 ```
 
-Equivalent module form: `python -m upscaler upscale ...`
+Equivalent module form: `python -m upscale upscale ...`
 
 ## Highlights
 
@@ -45,7 +57,7 @@ Equivalent module form: `python -m upscaler upscale ...`
 ## Library
 
 ```python
-from upscaler import UpscaleConfig, execute
+from upscale import UpscaleConfig, execute
 
 execute(UpscaleConfig(input="in.png", output="out.png", scale=4, cpu=True))
 ```

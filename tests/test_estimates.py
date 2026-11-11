@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from upscaler.estimates import (
+from upscale.estimates import (
     estimate_file_size_bytes,
     estimate_time_seconds,
     megapixels,
@@ -9,8 +9,8 @@ from upscaler.estimates import (
     print_sizes,
     resource_check,
 )
-from upscaler.help_content import get_help, list_topics
-from upscaler.schema import ResourceStatus
+from upscale.help_content import get_help, list_topics
+from upscale.schema import ResourceStatus
 
 
 def test_output_dimensions_scale():
@@ -30,7 +30,7 @@ def test_print_sizes():
 
 
 def test_auto_file_size_uses_tiff_threshold():
-    from upscaler.io_utils import LONG_EDGE_TIFF_THRESHOLD
+    from upscale.io_utils import LONG_EDGE_TIFF_THRESHOLD
 
     edge = LONG_EDGE_TIFF_THRESHOLD + 1
     assert estimate_file_size_bytes(edge, 10, "auto") == estimate_file_size_bytes(edge, 10, "tiff")

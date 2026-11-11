@@ -13,12 +13,12 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from upscaler.api import deps as D
-from upscaler.estimates import model_fits_vram
-from upscaler.help_content import get_help, list_topics
-from upscaler.models import DEFAULT_WEIGHTS_DIR, MODELS, all_models
-from upscaler.schema import LANGUAGE_CATALOG
-from upscaler.system import gather_system_info
+from upscale.api import deps as D
+from upscale.estimates import model_fits_vram
+from upscale.help_content import get_help, list_topics
+from upscale.models import DEFAULT_WEIGHTS_DIR, MODELS, all_models
+from upscale.schema import LANGUAGE_CATALOG
+from upscale.system import gather_system_info
 
 router = APIRouter()
 
@@ -26,8 +26,8 @@ router = APIRouter()
 def api_algorithms_list() -> dict[str, Any]:
     from dataclasses import asdict
 
-    from upscaler.algorithms import list_algorithm_meta, list_algorithms
-    from upscaler.algorithms.classical import backend_name
+    from upscale.algorithms import list_algorithm_meta, list_algorithms
+    from upscale.algorithms.classical import backend_name
 
     meta = list_algorithm_meta()
     return {
@@ -68,7 +68,7 @@ def api_system(
 
 @router.get("/api/about")
 def api_about() -> dict[str, Any]:
-    from upscaler.about import about_payload, models_disk_summary
+    from upscale.about import about_payload, models_disk_summary
 
     payload = about_payload()
     payload["models"] = models_disk_summary()
@@ -76,13 +76,13 @@ def api_about() -> dict[str, Any]:
 
 @router.get("/api/license")
 def api_license() -> dict[str, Any]:
-    from upscaler.about import license_text, package_version
+    from upscale.about import license_text, package_version
 
     return {"license": "MIT", "version": package_version(), "text": license_text()}
 
 @router.get("/api/updates")
 def api_updates() -> dict[str, Any]:
-    from upscaler.about import check_for_updates
+    from upscale.about import check_for_updates
 
     return check_for_updates()
 
@@ -100,7 +100,7 @@ def api_help_topic(topic: str, lang: str = "en") -> dict[str, str]:
 
 @router.get("/api/presets")
 def api_presets() -> dict[str, Any]:
-    from upscaler.presets import list_presets
+    from upscale.presets import list_presets
 
     return list_presets()
 
@@ -111,7 +111,7 @@ class PresetApplyBody(BaseModel):
 
 @router.post("/api/presets/apply")
 def api_presets_apply(body: PresetApplyBody) -> dict[str, Any]:
-    from upscaler.presets import _target_settings, resolve_option_preset, resolve_target_preset
+    from upscale.presets import _target_settings, resolve_option_preset, resolve_target_preset
 
     try:
         if body.kind == "target":
@@ -137,7 +137,7 @@ async def api_suggest(
     file: UploadFile = File(...),
     fast: bool = Form(False),
 ) -> dict[str, Any]:
-    from upscaler.suggest import suggest_model
+    from upscale.suggest import suggest_model
 
     job_dir = Path(tempfile.mkdtemp(prefix="upscale-suggest-"))
     try:
@@ -163,7 +163,7 @@ class BenchmarkBody(BaseModel):
 
 @router.post("/api/benchmark")
 def api_benchmark(body: BenchmarkBody) -> dict[str, Any]:
-    from upscaler.benchmark import run_benchmark
+    from upscale.benchmark import run_benchmark
 
     p = Path(body.path).resolve()
     if not p.is_file():

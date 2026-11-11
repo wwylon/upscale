@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from upscaler.schema import (
+from upscale.schema import (
     LANGUAGE_CATALOG,
     JobSettings,
     NamePattern,

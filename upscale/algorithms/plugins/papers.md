@@ -8,7 +8,7 @@ Classical → Paper). Diffusion stacks stay out of the slim installer.
 | Id | Status | Notes |
 | --- | --- | --- |
 | **texture_residual** | shipped | Lanczos structure + LR high-pass residual. Inspired by structure/texture split (Grimm/Kulla NPR shading, Efros–Leung / quilting family). **Not** a port of [pg2003uts](https://web.engr.oregonstate.edu/~grimmc/content/papers/pg2003uts/pg2003uts.pdf) (NPR mesh shading, not SR). |
-| **vectorize_scale** | shipped (optional) | Engines: [VTracer](https://pypi.org/project/vtracer/) (default) or [PyAutoTrace](https://pypi.org/project/pyautotrace/) (classic AutoTrace). Raster→SVG, then [resvg_py](https://pypi.org/project/resvg_py/) → PNG. Extra: `pip install 'upscaler[vectorize]'`. Best for logos / line art; weak on photos. SVG is internal only — user upload of SVG remains blocked. |
+| **vectorize_scale** | shipped (optional) | Engines: [VTracer](https://pypi.org/project/vtracer/) (default) or [PyAutoTrace](https://pypi.org/project/pyautotrace/) (classic AutoTrace). Raster→SVG, then [resvg_py](https://pypi.org/project/resvg_py/) → PNG. Extra: `pip install 'upscale[vectorize]'`. Best for logos / line art; weak on photos. SVG is internal only — user upload of SVG remains blocked. |
 
 ## Icebox / watch (Torch extras later)
 

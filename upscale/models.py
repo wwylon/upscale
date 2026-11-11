@@ -575,7 +575,7 @@ def _stream_download(url: str, dest: Path, *, max_bytes: int = 2_000_000_000) ->
     for _hop in range(8):
         req = urllib.request.Request(
             current,
-            headers={"User-Agent": "upscaler/1.0"},
+            headers={"User-Agent": "upscale/1.0"},
             method="GET",
         )
         # opener that does not follow redirects

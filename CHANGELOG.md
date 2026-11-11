@@ -6,6 +6,14 @@ this project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-11
+
+### Changed
+
+- **Renamed the Python package from `upscaler` to `upscale`** (import name, distribution name and command now match the repo). Use `import upscale` / `python -m upscale`.
+- `LICENSE` is now plain MIT; third-party notes moved to `NOTICE`.
+- Added package classifiers, homepage, issue/PR templates and Dependabot config; README documents the lighter `slim` install.
+
 ## [0.4.0] - 2026-11-09
 
 ### Added

@@ -65,9 +65,9 @@ def _cfg(
 
 
 def build_mcp() -> Any:
-    """Create and configure the FastMCP application (requires ``upscaler[mcp]``)."""
+    """Create and configure the FastMCP application (requires ``upscale[mcp]``)."""
     if FastMCP is None:
-        raise ImportError("Install MCP support: pip install 'upscaler[mcp]'")
+        raise ImportError("Install MCP support: pip install 'upscale[mcp]'")
 
     mcp = FastMCP(
         "upscale",

@@ -543,5 +543,11 @@
   "server.job.cannot_resume_checkpoint": "X XXX XXXX XX {state} XXXXXX XXXXXX XXXX XXX XXXXXXXXXX.",
   "server.model.shadows_builtin": "X XXXXX-XX XXXXX XX XXXXXXX XXXXX {name}.",
   "server.model.bad_extension": "XXXXXXXXXXX XXXXXXX XXXX XXXX: {ext}.",
-  "server.model.unknown": "XXXXXXX XXXXX: {name}."
+  "server.model.unknown": "XXXXXXX XXXXX: {name}.",
+  "server.compare.job_ids_required": "XXXXXX XX XXXXX XXX XXX XX XXXXXXX.",
+  "server.compare.too_many_jobs": "XXX XXXX XXXX XXXXXXXX XXX XXX XXXXXXXXXX.",
+  "server.compare.bad_body": "XXX XXXXXXXXXX XXXXXXX XX XXXXXXX: {reason}",
+  "server.job.bad_settings": "XXX XXXXXXXX XXX XXX XXXXX XXXX: {reason}",
+  "server.job.resuming": "XXXXXXXX XXXX XXX XXXXXXXXXX.",
+  "server.job.bad_mode": "XXX XXXX XXXX XX \"XXXX\" XX \"XXXX\"."
 }

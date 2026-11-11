@@ -7,8 +7,8 @@ import pytest
 from click.testing import CliRunner
 from PIL import Image
 
-from upscaler.cli import cli, settings_to_cli
-from upscaler.config import UpscaleConfig
+from upscale.cli import cli, settings_to_cli
+from upscale.config import UpscaleConfig
 
 
 def test_help():
@@ -34,7 +34,7 @@ def test_settings_to_cli():
 
 
 def test_settings_to_cli_overlap_tiff_vectorize_on_exists():
-    from upscaler.schema import NamePattern, OnExists, VectorizeSettings
+    from upscale.schema import NamePattern, OnExists, VectorizeSettings
 
     cfg = UpscaleConfig(
         input=None,
@@ -61,7 +61,7 @@ def test_settings_to_cli_overlap_tiff_vectorize_on_exists():
 def test_validate_sizing_rejects_height_only():
     import click
 
-    from upscaler.job_prep import validate_sizing
+    from upscale.job_prep import validate_sizing
 
     cfg = UpscaleConfig(height=100)
     with pytest.raises(click.UsageError, match="width and height"):
@@ -75,7 +75,7 @@ def test_batch_continues_after_one_failure(tmp_path: Path, monkeypatch: pytest.M
     Image.fromarray(np.zeros((8, 8, 3), dtype=np.uint8)).save(src_dir / "a.png")
     Image.fromarray(np.zeros((8, 8, 3), dtype=np.uint8)).save(src_dir / "b.png")
 
-    from upscaler import cli as cli_mod
+    from upscale import cli as cli_mod
 
     calls = {"n": 0}
     real_execute = cli_mod.execute

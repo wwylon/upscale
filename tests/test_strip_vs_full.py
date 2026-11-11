@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import numpy as np
 
-from upscaler.tiling import tiled_upscale
+from upscale.tiling import tiled_upscale
 
 
 def _full_canvas_upscale(img, infer_fn, model_scale, tile, overlap):
     """Reference: accumulate entire float canvas then normalize."""
-    from upscaler.tiling import _tile_starts, make_tile_weight
+    from upscale.tiling import _tile_starts, make_tile_weight
 
     H, W = img.shape[:2]
     C = img.shape[2] if img.ndim == 3 else 1

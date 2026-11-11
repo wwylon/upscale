@@ -14,8 +14,8 @@ from typing import Any
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 
-from upscaler.api import deps as D
-from upscaler.schema import JobSettings
+from upscale.api import deps as D
+from upscale.schema import JobSettings
 
 router = APIRouter()
 
@@ -54,7 +54,7 @@ async def create_job(
     job_dir = D.JOBS_ROOT / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
 
-    from upscaler.io_utils import is_vector_input, require_raster_suffix
+    from upscale.io_utils import is_vector_input, require_raster_suffix
 
     try:
         suffix = require_raster_suffix(file.filename)
@@ -393,8 +393,8 @@ def job_quality(job_id: str, mode: str = "seam") -> dict[str, Any]:
     import numpy as np
     from PIL import Image
 
-    from upscaler.io_utils import lanczos_resize, load_rgba
-    from upscaler.quality import diff_metrics, strip_seam_score
+    from upscale.io_utils import lanczos_resize, load_rgba
+    from upscale.quality import diff_metrics, strip_seam_score
 
     out_rgb, _, _ = load_rgba(result)
     if mode_key == "seam":

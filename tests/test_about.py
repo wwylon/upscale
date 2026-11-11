@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from upscaler.about import (
+from upscale.about import (
     about_payload,
     check_for_updates,
     license_text,

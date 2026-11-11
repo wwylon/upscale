@@ -1,7 +1,7 @@
 """Vectorize (VTracer or PyAutoTrace), then rasterize at the target size.
 
 Best for logos / line art / flat graphics — not photographs.
-Optional dependency: ``pip install 'upscaler[vectorize]'``
+Optional dependency: ``pip install 'upscale[vectorize]'``
 (vtracer + pyautotrace + resvg_py).
 
 SVG is produced internally; users still cannot upload SVG as input.
@@ -17,8 +17,8 @@ import xml.etree.ElementTree as ET
 import numpy as np
 from PIL import Image, ImageDraw
 
-from upscaler.algorithms import register_algorithm
-from upscaler.algorithms.classical import resize_classical
+from upscale.algorithms import register_algorithm
+from upscale.algorithms.classical import resize_classical
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +93,7 @@ def _trace_svg_autotrace(
     except ImportError as exc:
         raise ImportError(
             "autotrace engine requires pyautotrace. "
-            "Install with: pip install 'upscaler[vectorize]'"
+            "Install with: pip install 'upscale[vectorize]'"
         ) from exc
 
     # Map shared UI knobs onto AutoTrace TraceOptions.
@@ -138,7 +138,7 @@ def _trace_svg(
     except ImportError as exc:
         raise ImportError(
             "vtracer engine requires vtracer. "
-            "Install with: pip install 'upscaler[vectorize]'"
+            "Install with: pip install 'upscale[vectorize]'"
         ) from exc
     return _trace_svg_vtracer(
         rgb,
@@ -205,7 +205,7 @@ def _rasterize_svg(svg: str, tw: int, th: int) -> np.ndarray:
     logger.warning(
         "SVG rasterizer falling back to limited Pillow path; "
         "install resvg_py for correct Vectorize & scale output "
-        "(pip install 'upscaler[vectorize]')."
+        "(pip install 'upscale[vectorize]')."
     )
     return _rasterize_svg_pillow(svg, tw, th)
 
@@ -395,7 +395,7 @@ def vectorize_scale_resize(
         except ImportError as exc:
             raise ImportError(
                 "vectorize_scale engine=autotrace requires pyautotrace. "
-                "Install with: pip install 'upscaler[vectorize]'"
+                "Install with: pip install 'upscale[vectorize]'"
             ) from exc
     else:
         try:
@@ -403,7 +403,7 @@ def vectorize_scale_resize(
         except ImportError as exc:
             raise ImportError(
                 "vectorize_scale engine=vtracer requires vtracer. "
-                "Install with: pip install 'upscaler[vectorize]'"
+                "Install with: pip install 'upscale[vectorize]'"
             ) from exc
 
     raw = np.asarray(img, dtype=np.uint8)
@@ -445,6 +445,6 @@ register_algorithm(
     description=(
         "Trace to SVG (VTracer or PyAutoTrace), then rasterize at the target size. "
         "Best for logos and flat graphics — not photos. "
-        "Requires: pip install 'upscaler[vectorize]'."
+        "Requires: pip install 'upscale[vectorize]'."
     ),
 )

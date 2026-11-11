@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import numpy as np
 
-from upscaler.checkpoint import (
+from upscale.checkpoint import (
     StripCheckpoint,
     list_checkpoints,
     load_strip_checkpoint,
     save_strip_checkpoint,
 )
-from upscaler.quality import diff_metrics, strip_seam_score
+from upscale.quality import diff_metrics, strip_seam_score
 
 
 def test_strip_checkpoint_listed(tmp_path):

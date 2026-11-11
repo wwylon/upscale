@@ -13,7 +13,7 @@ def _isolate_jobs_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     root = tmp_path / "jobs"
     root.mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("UPSCALE_JOBS_DIR", str(root))
-    import upscaler.server as server
+    import upscale.server as server
 
     monkeypatch.setattr(server, "JOBS_ROOT", root)
     with server._jobs_lock:

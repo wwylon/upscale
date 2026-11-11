@@ -6,8 +6,8 @@ The canonical local gate is the `verify` list in `publish.manifest.yaml`. Run it
 
 ```text
 uv sync --locked --extra dev --extra server --extra mcp
-uv run ruff check upscaler tests
-uv run mypy --follow-imports=silent upscaler/schema.py upscaler/job_prep.py upscaler/config.py upscaler/naming.py upscaler/api
+uv run ruff check upscale tests
+uv run mypy --follow-imports=silent upscale/schema.py upscale/job_prep.py upscale/config.py upscale/naming.py upscale/api
 uv run upscale --help
 uv run pytest -q
 uv run python scripts/cpu_smoke.py
@@ -15,7 +15,7 @@ uv run python scripts/cpu_smoke.py
 
 ## Layout
 
-- `upscaler/` — engine, schema, CLI, server, MCP (engine must not import UI)
+- `upscale/` — engine, schema, CLI, server, MCP (engine must not import UI)
 - `ui/` — static web app
 - `desktop/` — pywebview launcher + installers
 - `android/` — Kotlin + NCNN
@@ -59,7 +59,11 @@ Use the `verify` gate above (`uv sync --locked --extra dev --extra server --extr
 
 ## Packaging / smoke
 
-See [plan/design/PACKAGING.md](../plan/design/PACKAGING.md) and [desktop/SMOKE.md](../desktop/SMOKE.md).
+See [desktop/SMOKE.md](../desktop/SMOKE.md) for the desktop smoke checklist.
+
+## Python versions
+
+This project supports Python 3.10+ (CI runs on 3.11). Other projects by the same author may require newer Python; there is no shared policy, and each repo states its own minimum in `pyproject.toml`.
 
 ## Serve security
 
@@ -110,16 +114,16 @@ macOS packaging is postponed (`desktop/MAC_SMOKE.md`).
 
 ## Layout
 
-- `upscaler/cli.py` — Click entry
-- `upscaler/engine.py` — shared run path
-- `upscaler/server.py` — FastAPI jobs + static UI
-- `upscaler/mcp_server.py` — MCP stdio tools
-- `upscaler/suggest.py`, `presets.py`, `benchmark.py` — helpers
-- `upscaler/checkpoint.py`, `quality.py` — resume/QA foundations
-- `upscaler/pipeline.py` — pass loop, disk intermediates
-- `upscaler/tiling.py` — feather-blended tiles
-- `upscaler/models.py` — registry, download + hash verify
-- `upscaler/web.py` — Gradio (legacy)
+- `upscale/cli.py` — Click entry
+- `upscale/engine.py` — shared run path
+- `upscale/server.py` — FastAPI jobs + static UI
+- `upscale/mcp_server.py` — MCP stdio tools
+- `upscale/suggest.py`, `presets.py`, `benchmark.py` — helpers
+- `upscale/checkpoint.py`, `quality.py` — resume/QA foundations
+- `upscale/pipeline.py` — pass loop, disk intermediates
+- `upscale/tiling.py` — feather-blended tiles
+- `upscale/models.py` — registry, download + hash verify
+- `upscale/web.py` — Gradio (legacy)
 - `desktop/` — pywebview shell
 - `android/` — mobile skeleton
 - `models/` — downloaded weights (gitignored)

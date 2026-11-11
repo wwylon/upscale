@@ -18,8 +18,8 @@ from __future__ import annotations
 import numpy as np
 from PIL import Image, ImageFilter
 
-from upscaler.algorithms import register_algorithm
-from upscaler.algorithms.classical import resize_classical
+from upscale.algorithms import register_algorithm
+from upscale.algorithms.classical import resize_classical
 
 # Defaults tuned for crop-compare (small regions)
 _DEFAULT_STRENGTH = 0.85

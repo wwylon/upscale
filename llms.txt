@@ -1,6 +1,6 @@
 # upscale
 
-> Local AI image upscaler. Chains Real-ESRGAN (via spandrel) 4x passes to reach any target scale, with feather-blended overlapping tiles for seam-free output. CPU or NVIDIA GPU. Python package `upscaler`, console script `upscale`.
+> Local AI image upscale. Chains Real-ESRGAN (via spandrel) 4x passes to reach any target scale, with feather-blended overlapping tiles for seam-free output. CPU or NVIDIA GPU. Python package `upscale`, console script `upscale`.
 
 ## Docs
 

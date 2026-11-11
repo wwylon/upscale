@@ -4822,8 +4822,8 @@ wheels = [
 ]
 
 [[package]]
-name = "upscaler"
-version = "0.4.0"
+name = "upscale"
+version = "0.5.0"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
@@ -4965,8 +4965,8 @@ requires-dist = [
     { name = "torchvision" },
     { name = "tqdm" },
     { name = "tqdm", marker = "extra == 'slim'" },
-    { name = "upscaler", extras = ["server", "desktop"], marker = "extra == 'slim'" },
-    { name = "upscaler", extras = ["ui", "server", "mcp", "desktop", "slim", "dev", "classical", "vectorize"], marker = "extra == 'all'" },
+    { name = "upscale", extras = ["server", "desktop"], marker = "extra == 'slim'" },
+    { name = "upscale", extras = ["ui", "server", "mcp", "desktop", "slim", "dev", "classical", "vectorize"], marker = "extra == 'all'" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'server'", specifier = ">=0.27" },
     { name = "vtracer", marker = "extra == 'vectorize'", specifier = ">=0.6" },
 ]

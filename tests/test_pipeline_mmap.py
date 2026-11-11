@@ -10,7 +10,7 @@ import torch
 
 def test_mid_pass_spill_uses_mmap(monkeypatch, tmp_path: Path):
     """Multi-pass with low spill threshold writes a uint8 memmap spill file."""
-    from upscaler import pipeline
+    from upscale import pipeline
 
     spill_writes: list[Path] = []
     real_memmap = np.memmap

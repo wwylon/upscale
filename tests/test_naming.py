@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from upscaler.naming import resolve_output_path
-from upscaler.schema import NamePattern, OnExists
+from upscale.naming import resolve_output_path
+from upscale.schema import NamePattern, OnExists
 
 
 def test_resolve_new_file(tmp_path: Path):
