@@ -35,8 +35,18 @@
       </div>
       <div style="padding:24px;display:flex;flex-direction:column;gap:12px;border-top:2px solid var(--color-divider)">
         <h3 style="margin:0" data-i18n="cli.options">Options</h3>
-        <div style="overflow-x:auto"><table class="table" style="width:100%"><thead><tr><th data-i18n="cli.col.option">Option</th><th data-i18n="cli.col.default">Default</th><th data-i18n="cli.col.what">What it does</th></tr></thead>
-        <tbody><sc-for list="{{ options }}" as="o" hint-placeholder-count="8"><tr><td style="font-family:ui-monospace,Consolas,monospace;font-size:13px;white-space:nowrap">{{ o.flag }}</td><td>{{ o.def }}</td><td>{{ o.text }}</td></tr></sc-for></tbody></table></div>
+        <div style="overflow-x:auto;display:flex;flex-direction:column;gap:0">
+          <div style="display:grid;grid-template-columns:minmax(140px,1.2fr) minmax(80px,0.6fr) 2fr;gap:8px 16px;font-size:12px;font-weight:700;letter-spacing:.04em;padding:8px 0;border-bottom:1px solid var(--color-divider)">
+            <span data-i18n="cli.col.option">Option</span><span data-i18n="cli.col.default">Default</span><span data-i18n="cli.col.what">What it does</span>
+          </div>
+          <sc-for list="{{ options }}" as="o" hint-placeholder-count="8">
+            <div style="display:grid;grid-template-columns:minmax(140px,1.2fr) minmax(80px,0.6fr) 2fr;gap:8px 16px;padding:10px 0;border-bottom:1px solid var(--color-divider);font-size:14px">
+              <span style="font-family:ui-monospace,Consolas,monospace;font-size:13px;white-space:nowrap">{{ o.flag }}</span>
+              <span>{{ o.def }}</span>
+              <span>{{ o.text }}</span>
+            </div>
+          </sc-for>
+        </div>
       </div>
     </section>
   </main>
@@ -81,6 +91,7 @@ class Component extends DCLogic {
 }
 </script>
 
+<script src="/ui/bridge/core.js"></script>
 <script src="/ui/backend-bridge.js"></script>
 
 </body>

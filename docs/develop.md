@@ -55,7 +55,12 @@ Use the `verify` gate above (`uv sync --locked --extra dev --extra server --extr
 ## UI entry
 
 - **Preferred:** `upscale serve` (design UI in `ui/` + FastAPI).
-- **Legacy:** `upscale ui` (Gradio) — subset of options; do not extend.
+- **`upscale ui`** redirects to `serve` (port 8787 when the Gradio default 7860 is left unchanged). Pass `--gradio` for the deprecated Gradio UI.
+- **Desktop shell** opens `/{locale}/` from the `upscale_lang` cookie / system preference (falls back to `en`).
+
+## Vendored Babel (large file on purpose)
+
+`ui/vendor/babel.min.js` is ~3 MB (`@babel/standalone`). The web UI ships a few `.jsx` bridge files and compiles them in the browser at load time (`ui/support.js`), with this local copy as the offline/CDN-fallback so `upscale serve` works without network. That is why the repo has a vendored file above 2 MB. A future build step that precompiles JSX would remove the need to ship it; until then, leave the file in place and do not strip it from the public export.
 
 ## Packaging / smoke
 
@@ -111,18 +116,22 @@ Place `*.onnx` in `%LOCALAPPDATA%\Upscale\models` (or export there).
 
 macOS packaging is postponed (`desktop/MAC_SMOKE.md`).
 
-## Layout
+## Module map (detail)
 
 - `upscale/cli.py` — Click entry
 - `upscale/engine.py` — shared run path
-- `upscale/server.py` — FastAPI jobs + static UI
+- `upscale/server.py` — FastAPI app shell + job worker; routers under `upscale/api/`
+- `upscale/api/media_routes.py` — `/api/estimate`, `/api/decode-preview`, `/api/preflight`
 - `upscale/mcp_server.py` — MCP stdio tools
+- `upscale/alpha_policy.py`, `memmap_util.py`, `weight_blend.py` — shared helpers
 - `upscale/suggest.py`, `presets.py`, `benchmark.py` — helpers
 - `upscale/checkpoint.py`, `quality.py` — resume/QA foundations
 - `upscale/pipeline.py` — pass loop, disk intermediates
 - `upscale/tiling.py` — feather-blended tiles
 - `upscale/models.py` — registry, download + hash verify
-- `upscale/web.py` — Gradio (legacy)
+- `upscale/web.py` — Gradio (legacy; `--gradio` only)
 - `desktop/` — pywebview shell
 - `android/` — mobile skeleton
 - `models/` — downloaded weights (gitignored)
+
+See also [docs/help/backends.md](help/backends.md) for Torch vs ONNX feature parity.

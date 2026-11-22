@@ -382,5 +382,8 @@ B.API = B.API || "";
   B.applyModelStatus = typeof applyModelStatus === "function" ? applyModelStatus : B.applyModelStatus;
   B.revokeStateBlobs = typeof revokeStateBlobs === "function" ? revokeStateBlobs : B.revokeStateBlobs;
   B.isCancelledError = typeof isCancelledError === "function" ? isCancelledError : B.isCancelledError;
+  // Single owner for JobSettings mapping (backend-bridge must not redefine these).
+  B.settingsFromAdvanced = settingsFromAdvanced;
+  B.settingsFromSimple = settingsFromSimple;
 
 })(window.__UpscaleBridge = window.__UpscaleBridge || {});

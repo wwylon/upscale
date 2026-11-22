@@ -223,6 +223,11 @@ def tiled_upscale(
         if skipped:
             pbar.update(skipped)
 
+    import time as _time
+
+    _ckpt_t0 = _time.monotonic()
+    _ckpt_flush0 = flush_row
+
     for yi, y in enumerate(y_starts):
         if yi < start_yi:
             continue
@@ -253,6 +258,8 @@ def tiled_upscale(
             while pause_event is not None and pause_event.is_set():
                 if cancel_event is not None and cancel_event.is_set():
                     raise JobCancelled("cancelled")
+                # pause_event is set while paused; poll with a short sleep
+                # (Event.wait returns immediately when already set).
                 import time as _time
 
                 _time.sleep(0.05)
@@ -316,32 +323,42 @@ def tiled_upscale(
             carry_canvas = None
             carry_weight = None
 
-        # Checkpoint periodically (every 2 bands + first/last) to cut disk I/O.
-        if job_dir is not None and (
-            yi == 0
-            or yi == len(y_starts) - 1
-            or (yi + 1) % 2 == 0
-            or (pause_event is not None and pause_event.is_set())
-        ):
-            from .checkpoint import StripCheckpoint, save_strip_checkpoint
+        # Adaptive strip checkpoints: first/last band, on pause, every ~2 bands,
+        # or when enough wall time / flushed bytes elapsed (slow disks).
+        if job_dir is not None:
+            elapsed = _time.monotonic() - _ckpt_t0
+            flushed_bytes = max(0, flush_row - _ckpt_flush0) * out_W * C
+            due_time = elapsed >= 30.0
+            due_bytes = flushed_bytes >= (64 * 1024 * 1024)
+            if (
+                yi == 0
+                or yi == len(y_starts) - 1
+                or (yi + 1) % 2 == 0
+                or due_time
+                or due_bytes
+                or (pause_event is not None and pause_event.is_set())
+            ):
+                from .checkpoint import StripCheckpoint, save_strip_checkpoint
 
-            save_strip_checkpoint(
-                job_dir,
-                StripCheckpoint(
-                    pass_index=pass_index,
-                    flush_row=flush_row,
-                    out_h=out_H,
-                    out_w=out_W,
-                    channels=C,
-                    model_scale=model_scale,
-                    tile=tile,
-                    overlap=overlap,
-                ),
-                result_mmap_path=mmap_path,
-                carry_canvas=carry_canvas,
-                carry_weight=carry_weight,
-                carry_top=carry_top if carry_canvas is not None else flush_row,
-            )
+                save_strip_checkpoint(
+                    job_dir,
+                    StripCheckpoint(
+                        pass_index=pass_index,
+                        flush_row=flush_row,
+                        out_h=out_H,
+                        out_w=out_W,
+                        channels=C,
+                        model_scale=model_scale,
+                        tile=tile,
+                        overlap=overlap,
+                    ),
+                    result_mmap_path=mmap_path,
+                    carry_canvas=carry_canvas,
+                    carry_weight=carry_weight,
+                    carry_top=carry_top if carry_canvas is not None else flush_row,
+                )
+                _ckpt_t0 = _time.monotonic()
+                _ckpt_flush0 = flush_row
 
         del canvas, weight_map
 
@@ -365,28 +382,49 @@ def make_infer_fn(descriptor, device, fp16: bool):
     Handles tensor conversion and dtype. OOM retry lives in pipeline._upscale_pass.
     Torch is imported lazily so the ONNX/slim desktop path can use tiled_upscale
     without shipping PyTorch.
+
+    Opt-in ``UPSCALE_TORCH_COMPILE=1`` wraps the model with
+    ``torch.compile(dynamic=False)`` once (fixed tile shapes work best). Off by
+    default — inductor hangs have been reported on some PyTorch builds.
     """
+    import os
+    import warnings
+
     import torch
 
     model = descriptor.model
     use_half = bool(fp16 and getattr(device, "type", None) == "cuda")
     dtype = torch.float16 if use_half else torch.float32
 
+    compile_flag = os.environ.get("UPSCALE_TORCH_COMPILE", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    if compile_flag and hasattr(torch, "compile"):
+        try:
+            model = torch.compile(model, dynamic=False)  # type: ignore[assignment]
+            warnings.warn(
+                "UPSCALE_TORCH_COMPILE enabled (dynamic=False). "
+                "First tiles may be slow; disable if the GPU hangs.",
+                stacklevel=2,
+            )
+        except Exception as exc:  # noqa: BLE001
+            warnings.warn(f"torch.compile skipped: {exc}", stacklevel=2)
+
     def infer(patch: np.ndarray) -> np.ndarray:
-        from .infer_util import nchw_float_to_uint8, patch_to_nchw_float
+        from .infer_util import patch_to_nchw_float
 
         nchw = patch_to_nchw_float(patch)
         t = torch.from_numpy(nchw).to(device=device, dtype=dtype, non_blocking=True)
 
-        with torch.no_grad():
+        with torch.inference_mode():
             out = model(t)
-            out = out.float().clamp_(0, 1)
-            # Quantize on device so D2H is uint8-sized after round-trip via float
-            # host path kept for dtype compatibility with nchw_float_to_uint8.
-            host = out.cpu().numpy()
+            # Quantize on device so D2H transfers uint8, not float32.
+            out = out.float().clamp_(0, 1).mul_(255.0).round_().to(torch.uint8)
+            host = out.squeeze(0).permute(1, 2, 0).contiguous().cpu().numpy()
 
-        result = nchw_float_to_uint8(host)
         del t, out
-        return result
+        return host
 
     return infer

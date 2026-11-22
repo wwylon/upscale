@@ -159,13 +159,23 @@ def execute_onnx(
         ONNX_MODELS.get(model_name, {}).get("scale") or registry_scale(model_name)
     )
     if cfg.tile in ("auto", None):
-        # Rough RAM-based tile (ORT has no cuda.mem_get_info here).
+        # Prefer CUDA free VRAM when ORT uses a CUDA EP; else host RAM heuristic.
+        avail = None
         try:
-            import psutil
+            import torch
 
-            avail = int(psutil.virtual_memory().available * 0.25)
+            if torch.cuda.is_available():
+                free_b, _ = torch.cuda.mem_get_info()
+                avail = int(free_b * 0.50)
         except Exception:  # noqa: BLE001
-            avail = 512 * 1024 * 1024
+            avail = None
+        if avail is None:
+            try:
+                import psutil
+
+                avail = int(psutil.virtual_memory().available * 0.25)
+            except Exception:  # noqa: BLE001
+                avail = 512 * 1024 * 1024
         bytes_per_px = 8000
         tile_guess = int(max(128, min(512, (avail / bytes_per_px) ** 0.5)))
         tile_int = (tile_guess // 64) * 64 or 256
@@ -254,8 +264,24 @@ def execute_onnx(
             on_progress({"type": "cancelled", "pct": 0, "message": "cancelled"})
         raise
 
-    # Alpha: Lanczos only on slim path
+    # Alpha: Lanczos only on slim/ONNX path (sr_alpha not supported — see docs/help/backends.md).
     out_alpha = prep.alpha
+    if prep.alpha is not None and prep.original_mode in ("RGBA", "LA") and prep.scale != 1.0:
+        from ..alpha_policy import upsample_alpha
+
+        if cfg.sr_alpha:
+            warnings.warn(
+                "--sr-alpha is not supported on the ONNX backend; using Lanczos for alpha.",
+                stacklevel=2,
+            )
+        out_alpha = upsample_alpha(
+            prep.alpha,
+            scale=prep.scale,
+            target_w=run_tw,
+            target_h=run_th,
+            sr_alpha=False,
+            allow_sr=False,
+        )
     return finalize_result(
         prep,
         result,

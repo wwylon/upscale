@@ -19,12 +19,24 @@ def test_server_imports_without_torch(monkeypatch):
         sys.modules["torch"] = blocker
 
     # Fresh import of modules that used to pull torch at top level
-    for name in list(sys.modules):
-        if name.startswith("upscale.pipeline") or name.startswith("upscale.server"):
+    # Snapshot and restore afterwards: later tests patch the original module objects, and a
+    # leaked fresh ``upscale.pipeline`` makes ``from .pipeline import run`` bypass their patches.
+    import upscale as pkg
+
+    names = [n for n in sys.modules if n.startswith("upscale.pipeline") or n.startswith("upscale.server")]
+    saved = {n: sys.modules[n] for n in names}
+    saved_attrs = {a: getattr(pkg, a) for a in ("pipeline", "server") if hasattr(pkg, a)}
+    for name in names:
+        del sys.modules[name]
+    try:
+        import upscale.pipeline as pipeline
+        import upscale.server as server
+
+        assert pipeline.compute_passes(4, 4) == 1
+        assert server.app.title == "Upscale"
+    finally:
+        for name in [n for n in sys.modules if n.startswith("upscale.pipeline") or n.startswith("upscale.server")]:
             del sys.modules[name]
-
-    import upscale.pipeline as pipeline
-    import upscale.server as server
-
-    assert pipeline.compute_passes(4, 4) == 1
-    assert server.app.title == "Upscale"
+        sys.modules.update(saved)
+        for attr, mod in saved_attrs.items():
+            setattr(pkg, attr, mod)

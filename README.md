@@ -1,6 +1,8 @@
 # upscale
 
 [![CI](https://github.com/wwylon/upscale/actions/workflows/ci.yml/badge.svg)](https://github.com/wwylon/upscale/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/wwylon/upscale)](https://github.com/wwylon/upscale/releases)
+[![PyPI](https://img.shields.io/pypi/v/upscale)](https://pypi.org/project/upscale/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Local AI image upscale. Chains Real-ESRGAN passes (via [spandrel](https://github.com/chaiNNer-org/spandrel)) to reach any target scale, with feather-blended overlapping tiles so large outputs have no seams. Runs on CPU or an NVIDIA GPU; nothing leaves your machine except the one-time model download.
@@ -14,7 +16,10 @@ Local AI image upscale. Chains Real-ESRGAN passes (via [spandrel](https://github
 ## Install
 
 ```bash
-pip install "git+https://github.com/wwylon/upscale.git"   # or: pipx install git+https://github.com/wwylon/upscale.git
+pip install upscale
+pip install "upscale[server]"   # web UI + job API
+pip install "upscale[mcp]"      # MCP tools for agents
+# or: pipx install upscale
 ```
 
 The pip install pulls PyTorch (large, slow first install). A PyTorch-free build exists only as the Windows desktop app (ONNX Runtime); see [docs/develop.md](docs/develop.md).
@@ -23,8 +28,8 @@ From a clone:
 
 ```bash
 pip install -e .
-pip install -e ".[server]"    # web UI + job API
-pip install -e ".[mcp]"       # MCP tools for agents
+pip install -e ".[server,mcp]"
+# tip without cloning: pip install "git+https://github.com/wwylon/upscale.git"
 ```
 
 ## First win
@@ -70,9 +75,16 @@ execute(UpscaleConfig(input="in.png", output="out.png", scale=4, cpu=True))
 
 ## Tests
 
+Local gate (also in [CONTRIBUTING.md](CONTRIBUTING.md) / `publish.manifest.yaml`):
+
 ```bash
-pip install -e ".[dev,server,mcp]"
-pytest
+uv sync --locked --extra dev --extra server --extra mcp
+uv run ruff check upscale tests
+uv run mypy --follow-imports=silent upscale/schema.py upscale/job_prep.py upscale/config.py upscale/naming.py upscale/api
+uv run pytest -q
+uv run python scripts/cpu_smoke.py
 ```
+
+GitHub Actions are disabled to save minutes; run the gate locally (or `workflow_dispatch` if re-enabled) before publish.
 
 MIT licensed. See [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).

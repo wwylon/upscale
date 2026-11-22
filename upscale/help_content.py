@@ -9,6 +9,7 @@ HELP_TOPICS = [
     "size",
     "crop",
     "model",
+    "backends",
     "filters",
     "output",
     "advanced",

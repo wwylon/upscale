@@ -170,106 +170,21 @@
     });
   }
 
+  // Owned by ui/bridge/core.js — do not redefine mapping here.
   function settingsFromAdvanced(comp) {
-    const s = comp.state;
-    const k = typeof comp.curScale === "function" ? comp.curScale() : +s.scale || 4;
-    const filt = s.filt || {};
-    const f = (key) => (filt[key] && filt[key].on ? (filt[key].v || 0) / 100 : 0);
-    const settings = {
-      scale: s.mode === "scale" ? k : null,
-      target_size: s.mode === "target" ? +s.target || null : null,
-      width: s.mode === "dims" ? +s.dw || null : null,
-      height: s.mode === "dims" ? +s.dh || null : null,
-      model: s.model,
-      format: s.fmt || "auto",
-      quality: s.q || 90,
-      tiff_compression: s.tiff || "lzw",
-      // Advanced UI no longer exposes strength/blend; keep neutral defaults.
-      strength: 1,
-      denoise: _unit(s.denoise, 0.5),
-      blend_model: null,
-      blend: 0.5,
-      device: s.device || "auto",
-      half: !!s.half,
-      tile: s.tile === "auto" ? "auto" : +s.tile || "auto",
-      overlap: +s.overlap || 32,
-      filters: {
-        pre_denoise: f("denoise"),
-        jpeg_clean: f("jpeg"),
-        deblur: f("deblur"),
-        edge: f("edge"),
-        grain: f("grain"),
-        color_contrast: f("color"),
-        halo_reduce: f("halo"),
-        seamless: !!s.seamless,
-        face_restore: 0,
-      },
-      mid_pass_previews: true,
-      fast: !!s.fast,
-      sr_alpha: !!s.srAlpha,
-    };
-    if (s.namePattern) {
-      settings.name_pattern = {
-        pattern: s.namePattern,
-        on_exists: s.onExists || "number",
-      };
+    const fn = (window.__UpscaleBridge || {}).settingsFromAdvanced;
+    if (typeof fn !== "function") {
+      throw new Error("settingsFromAdvanced missing; load ui/bridge/core.js first");
     }
-    if (s.method === "classical" && s.algorithm) {
-      settings.algorithm = s.algorithm;
-      if (s.algorithm === "vectorize_scale") {
-        const n = (v, d) => {
-          const x = Number(v);
-          return Number.isFinite(x) ? x : d;
-        };
-        settings.vectorize = {
-          engine: s.vecEngine === "autotrace" ? "autotrace" : "vtracer",
-          color_precision: Math.max(1, Math.min(8, n(s.vecColors, 6))),
-          filter_speckle: Math.max(0, Math.min(64, n(s.vecSpeckle, 4))),
-          corner_threshold: Math.max(0, Math.min(180, n(s.vecCorners, 60))),
-          mode: s.vecMode === "polygon" ? "polygon" : "spline",
-          max_trace_edge: Math.max(256, Math.min(4096, n(s.vecTrace, 1024))),
-        };
-      }
-    }
-    if (s.test && s.w) {
-      const size = +s.cropSize || 128;
-      const cx = s.cx != null ? s.cx : 0.5;
-      const cy = s.cy != null ? s.cy : 0.5;
-      const x = Math.max(0, Math.round(cx * s.w - size / 2));
-      const y = Math.max(0, Math.round(cy * s.h - size / 2));
-      settings.crop = { x, y, w: Math.min(size, s.w - x), h: Math.min(size, s.h - y) };
-    }
-    return settings;
+    return fn(comp);
   }
 
   function settingsFromSimple(comp) {
-    const s = comp.state;
-    const map = {
-      photo: "RealESRGAN_x4plus",
-      art: "RealESRGAN_x4plus_anime_6B",
-      old: "realesr-general-wdn-x4v3",
-    };
-    const kind = s.type || s.kind || "photo";
-    const scale = +(s.scale || 4);
-    const settings = {
-      scale,
-      model: map[kind] || map.photo,
-      format: "auto",
-      device: "auto",
-      mid_pass_previews: true,
-    };
-    if (s.preview && s.w) {
-      const size = 512;
-      const x = Math.max(0, Math.round(s.w / 2 - size / 2));
-      const y = Math.max(0, Math.round(s.h / 2 - size / 2));
-      settings.crop = {
-        x,
-        y,
-        w: Math.min(size, s.w - x),
-        h: Math.min(size, s.h - y),
-      };
+    const fn = (window.__UpscaleBridge || {}).settingsFromSimple;
+    if (typeof fn !== "function") {
+      throw new Error("settingsFromSimple missing; load ui/bridge/core.js first");
     }
-    return settings;
+    return fn(comp);
   }
 
   function applyModelStatus(models) {

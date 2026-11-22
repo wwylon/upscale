@@ -44,21 +44,15 @@ def compute_passes(scale: float, model_scale: int = 4) -> int:
 
 
 def _is_memmap(x: np.ndarray) -> bool:
-    # Prefer isinstance when np.memmap is still a type (tests may monkeypatch it).
-    mm = getattr(np, "memmap", None)
-    if isinstance(mm, type):
-        try:
-            if isinstance(x, mm):
-                return True
-        except TypeError:
-            pass
-    return getattr(x, "filename", None) is not None or type(x).__name__ == "memmap"
+    from .memmap_util import is_memmap
+
+    return is_memmap(x)
 
 
 def _materialize(arr: np.ndarray) -> np.ndarray:
-    if _is_memmap(arr):
-        return np.array(arr, copy=True)
-    return np.asarray(arr)
+    from .memmap_util import materialize
+
+    return materialize(arr)
 
 
 def _torch_available() -> bool:
@@ -87,6 +81,9 @@ def run(
     fp16: bool,
     tile: int,
     overlap: int,
+    # NOTE: strength<1 with seamless-padded ``img`` blends against the padded
+    # canvas. Callers that pad (engine / ONNX) must pass strength=1.0 here and
+    # apply strength in finalize_result against the unpadded source.
     show_progress: bool = True,
     model_scale: int | None = None,
     disk_intermediate_threshold: int = DEFAULT_DISK_INTERMEDIATE_THRESHOLD,
@@ -463,9 +460,11 @@ def upscale_alpha(
     target_h: int | None = None,
     infer_fn=None,
 ) -> np.ndarray:
-    rgb = np.stack([alpha, alpha, alpha], axis=-1)
-    out = run(
-        rgb,
+    """Neural SR of alpha (grayscale→RGB→mean). Prefer alpha_policy for Lanczos/default."""
+    from .alpha_policy import upsample_alpha_sr
+
+    return upsample_alpha_sr(
+        alpha,
         scale=scale,
         descriptor=descriptor,
         device=device,
@@ -477,9 +476,7 @@ def upscale_alpha(
         disk_intermediate_threshold=disk_intermediate_threshold,
         cancel_event=cancel_event,
         pause_event=pause_event,
-        strength=1.0,
         target_w=target_w,
         target_h=target_h,
         infer_fn=infer_fn,
     )
-    return out.mean(axis=-1).round().astype(np.uint8)

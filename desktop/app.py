@@ -14,7 +14,35 @@ from pathlib import Path
 
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("UPSCALE_PORT", "8787"))
-URL = f"http://{HOST}:{PORT}/en/"
+
+
+def _prefer_desktop_locale() -> str:
+    """Cookie / env / system language → enabled UI locale (default en)."""
+    enabled = {"en", "pl", "zh", "ar"}
+    env = (os.environ.get("UPSCALE_LANG") or "").strip().lower().replace("_", "-")
+    if env.split("-", 1)[0] in enabled:
+        return env if env in enabled else env.split("-", 1)[0]
+    # Windows: prefer user UI language when available
+    try:
+        import locale as _locale
+
+        for key in ("LANG", "LC_ALL", "LC_MESSAGES"):
+            raw = (os.environ.get(key) or "").strip().lower().replace("_", "-")
+            if raw:
+                primary = raw.split(".", 1)[0].split("-", 1)[0]
+                if primary in enabled:
+                    return primary
+        loc = (_locale.getdefaultlocale()[0] or "en").lower().replace("_", "-")
+        primary = loc.split("-", 1)[0]
+        if primary in enabled:
+            return primary
+    except Exception:  # noqa: BLE001
+        pass
+    return "en"
+
+
+def _ui_url() -> str:
+    return f"http://{HOST}:{PORT}/{_prefer_desktop_locale()}/"
 
 
 def _app_dir() -> Path:
@@ -70,18 +98,19 @@ def main() -> None:
     thread = threading.Thread(target=_start_server, name="upscale-uvicorn", daemon=True)
     thread.start()
 
+    url = _ui_url()
     deadline = time.time() + 60.0
     while time.time() < deadline:
         try:
             import urllib.request
 
-            with urllib.request.urlopen(URL, timeout=1) as resp:
+            with urllib.request.urlopen(url, timeout=1) as resp:
                 if resp.status == 200:
                     break
         except OSError:
             time.sleep(0.25)
     else:
-        raise SystemExit(f"Server did not start on {URL}")
+        raise SystemExit(f"Server did not start on {url}")
 
     win_ref: dict[str, object] = {"w": None}
 
@@ -149,7 +178,7 @@ def main() -> None:
 
     window = webview.create_window(
         "Upscale",
-        URL,
+        url,
         width=1400,
         height=900,
         min_size=(1000, 700),

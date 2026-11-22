@@ -36,7 +36,11 @@ def list_checkpoints(job_dir: Path | str) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     strip = root / "strip.json"
     if strip.is_file():
-        items.append(json.loads(strip.read_text(encoding="utf-8")))
+        try:
+            items.append(json.loads(strip.read_text(encoding="utf-8")))
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError, TypeError, ValueError):
+            # Corrupt leftover — ignore rather than crash API / resume listing.
+            pass
     return items
 
 
@@ -213,12 +217,9 @@ def save_pass_complete(
         if tmp_mmap.is_file():
             tmp_mmap.unlink(missing_ok=True)
         # Prefer plain file I/O so Windows can replace without an open memmap handle.
-        src = np.ascontiguousarray(arr, dtype=np.uint8)
-        with open(tmp_mmap, "wb") as f:
-            step = max(1, 64)
-            for y0 in range(0, shape[0], step):
-                y1 = min(shape[0], y0 + step)
-                f.write(src[y0:y1].tobytes())
+        from .memmap_util import spill_uint8_rows
+
+        spill_uint8_rows(arr, tmp_mmap, chunk=64)
         if mmap_path.is_file():
             mmap_path.unlink(missing_ok=True)
         os.replace(tmp_mmap, mmap_path)

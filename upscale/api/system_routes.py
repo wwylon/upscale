@@ -137,11 +137,21 @@ async def api_suggest(
     file: UploadFile = File(...),
     fast: bool = Form(False),
 ) -> dict[str, Any]:
+    from upscale.io_utils import is_vector_input, require_raster_suffix
     from upscale.suggest import suggest_model
 
     job_dir = Path(tempfile.mkdtemp(prefix="upscale-suggest-"))
     try:
-        suffix = Path(file.filename or "input.png").suffix or ".png"
+        try:
+            suffix = require_raster_suffix(file.filename)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+        if is_vector_input(file.filename, file.content_type):
+            raise HTTPException(
+                400,
+                "Vector images are not supported. "
+                "Rasterize to PNG, TIFF, or another supported bitmap format first.",
+            )
         dest = job_dir / f"input{suffix}"
         content = await file.read()
         if len(content) > D.MAX_UPLOAD_BYTES:

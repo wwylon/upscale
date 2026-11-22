@@ -1,7 +1,7 @@
 """Gradio web UI — thin wrapper over UpscaleConfig + engine.execute.
 
-Deprecated for new workflows: prefer ``upscale serve`` (FastAPI + bundled HTML UI).
-This module remains for ``upscale ui`` / ``pip install upscale[ui]`` compatibility.
+Deprecated: ``upscale ui`` now redirects to ``upscale serve``. Pass
+``upscale ui --gradio`` (requires ``pip install upscale[ui]``) for this UI.
 """
 
 from __future__ import annotations

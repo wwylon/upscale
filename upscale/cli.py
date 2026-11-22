@@ -379,11 +379,13 @@ def batch_cmd(input_dir: Path, output_dir: Path, **kw) -> None:
         cfg = _cfg_from_opts(src, output_dir / src.name, **kw)
         # Apply naming pattern into output_dir
         if cfg.name_pattern:
+            # Classical / plugin jobs should stamp the algorithm name, not the unused neural model.
+            model_token = cfg.algorithm if cfg.algorithm else cfg.model
             resolved = resolve_output_path(
                 output_dir,
                 stem=src.stem,
                 scale=cfg.scale or "auto",
-                model=cfg.model,
+                model=model_token,
                 ext=cfg.format if cfg.format != "auto" else src.suffix.lstrip(".") or "png",
                 pattern=cfg.name_pattern,
             )
@@ -570,12 +572,36 @@ def mcp_cmd() -> None:
 @click.option("--host", default="127.0.0.1", show_default=True)
 @click.option("--port", default=7860, show_default=True, type=int)
 @click.option("--share", is_flag=True, default=False)
-def ui_cmd(host: str, port: int, share: bool) -> None:
-    """Launch Gradio UI (legacy; prefer `upscale serve`)."""
+@click.option(
+    "--gradio",
+    is_flag=True,
+    default=False,
+    help="Launch legacy Gradio UI instead of redirecting to `upscale serve`.",
+)
+def ui_cmd(host: str, port: int, share: bool, gradio: bool) -> None:
+    """Open the design UI via `upscale serve` (Gradio kept behind --gradio)."""
     import ipaddress
     import os
 
-    click.echo("Note: prefer `upscale serve` for the design UI.", err=True)
+    if not gradio:
+        if share:
+            raise click.ClickException(
+                "`upscale ui` no longer uses Gradio share; run `upscale serve` "
+                "or pass --gradio for the legacy UI."
+            )
+        # Default port for serve is 8787; keep 7860 only for --gradio compat.
+        serve_port = 8787 if port == 7860 else port
+        click.echo(
+            f"Redirecting to `upscale serve --host {host} --port {serve_port}` "
+            "(pass --gradio for the legacy Gradio UI).",
+            err=True,
+        )
+        from .server import run_server
+
+        run_server(host=host, port=serve_port)
+        return
+
+    click.echo("Note: Gradio UI is deprecated; prefer `upscale serve`.", err=True)
     allow_remote = os.environ.get("UPSCALE_ALLOW_REMOTE", "").strip() in (
         "1",
         "true",

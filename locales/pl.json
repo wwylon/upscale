@@ -549,5 +549,5 @@
   "server.compare.bad_body": "Żądanie porównania jest nieprawidłowe: {reason}",
   "server.job.bad_settings": "Ustawienia nie są prawidłowym JSON: {reason}",
   "server.job.resuming": "Wznówienie z punktu kontrolnego.",
-  "server.job.bad_mode": "Tryb musi być \"szw\" lub \"różnica\"."
+  "server.job.bad_mode": "Tryb musi być \"seam\" lub \"diff\"."
 }

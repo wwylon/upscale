@@ -9,19 +9,25 @@ from typing import Callable
 import click
 import numpy as np
 
+from .alpha_policy import upsample_alpha
 from .backends import resolve_backend
 from .config import UpscaleConfig
 from .job_prep import clamp_overlap, finalize_result, prepare_job
 from .models import (
     FAST_MODEL,
+    _model_param_bytes,
     auto_tile_size,
     ensure_model,
     load_model,
     registry_scale,
     resolve_device,
 )
-from .pipeline import compute_passes, resolve_model_scale, run, upscale_alpha
+from .pipeline import compute_passes, resolve_model_scale, run
 from .tiling import JobCancelled
+from .weight_blend import (
+    blend_parameters,  # noqa: F401 — re-export for tests
+    blend_secondary_into,
+)
 
 
 def _execute_classical(
@@ -99,9 +105,15 @@ def _execute_classical(
     return path
 
 
-def resolve_tile(tile: str | int, device, half: bool) -> int:
+def resolve_tile(
+    tile: str | int,
+    device,
+    half: bool,
+    *,
+    model_bytes: int | None = None,
+) -> int:
     if tile == "auto" or tile is None:
-        return auto_tile_size(device, half)
+        return auto_tile_size(device, half, model_bytes=model_bytes)
     try:
         return int(tile)
     except (TypeError, ValueError) as exc:
@@ -110,41 +122,12 @@ def resolve_tile(tile: str | int, device, half: bool) -> int:
         ) from exc
 
 
-def blend_parameters(dst_model, src_model, alpha: float) -> None:
-    """Atomically blend ``src`` into ``dst``: dst ← (1-α)·dst + α·src.
-
-    Builds a full replacement state dict and assigns it only after every
-    parameter name and shape matches. Raises on mismatch (caller may warn).
-    """
-    import torch
-
-    a = float(np.clip(alpha, 0.0, 1.0))
-    dst_sd = {k: v.detach() for k, v in dst_model.state_dict().items()}
-    src_sd = {k: v.detach() for k, v in src_model.state_dict().items()}
-    if set(dst_sd) != set(src_sd):
-        raise ValueError("blend_parameters: state dict keys differ")
-    blended = {}
-    for k, v_dst in dst_sd.items():
-        v_src = src_sd[k]
-        if v_dst.shape != v_src.shape:
-            raise ValueError(f"blend_parameters: shape mismatch on {k}")
-        if not torch.is_floating_point(v_dst):
-            blended[k] = v_dst.clone()
-        else:
-            blended[k] = v_dst.float().mul(1.0 - a).add_(v_src.float(), alpha=a).to(
-                dtype=v_dst.dtype
-            )
-    dst_model.load_state_dict(blended, strict=True)
-
-
 def _apply_denoise_dni(descriptor, cfg: UpscaleConfig, model_name: str, device, half, log, show) -> None:
     """Blend general / WDN weights when --denoise is set for the general pair.
 
     ``denoise=0.5`` (the config default) is a sentinel meaning "leave the base
     weights alone" — not a 50/50 mix. Endpoints: 0 → general, 1 → full WDN.
     """
-    import torch
-
     dni = cfg.denoise
     if dni is None or abs(dni - 0.5) < 1e-6:
         return
@@ -156,37 +139,23 @@ def _apply_denoise_dni(descriptor, cfg: UpscaleConfig, model_name: str, device, 
             stacklevel=2,
         )
         return
-    try:
-        other_name = wdn if model_name == general else general
-        # denoise=1 → full WDN, denoise=0 → full general
-        w_wdn = float(np.clip(dni, 0.0, 1.0))
-        if model_name == wdn:
-            other_path = ensure_model(other_name, cfg.resolved_weights_dir())
-            other = load_model(other_path, device, half)
-            a = 1.0 - w_wdn  # weight of other (general)
-        else:
-            other_path = ensure_model(wdn, cfg.resolved_weights_dir())
-            other = load_model(other_path, device, half)
-            a = w_wdn  # weight of WDN into general
-        # Blend on CPU tensors when possible to avoid two full GPU residents.
-        other.model.to("cpu")
-        descriptor.model.to("cpu")
-        blend_parameters(descriptor.model, other.model, a)
-        descriptor.model.to(device)
-        if show:
-            log(f"Denoise DNI: {model_name} blended with {other_name} @ {dni:.2f}")
-        del other
-        import gc
-
-        gc.collect()
-        if getattr(device, "type", None) == "cuda":
-            torch.cuda.empty_cache()
-    except Exception as exc:  # noqa: BLE001
-        warnings.warn(f"Denoise DNI skipped: {exc}", stacklevel=2)
-        try:
-            descriptor.model.to(device)
-        except Exception:  # noqa: BLE001
-            pass
+    other_name = wdn if model_name == general else general
+    w_wdn = float(np.clip(dni, 0.0, 1.0))
+    # denoise=1 → full WDN into general; when already on WDN, blend toward general.
+    a = (1.0 - w_wdn) if model_name == wdn else w_wdn
+    blend_secondary_into(
+        descriptor,
+        other_name=other_name,
+        alpha=a,
+        weights_dir=cfg.resolved_weights_dir(),
+        device=device,
+        half=half,
+        ensure_model=ensure_model,
+        load_model=load_model,
+        log=log,
+        show=show,
+        label=f"Denoise DNI ({model_name})",
+    )
 
 
 def execute(
@@ -213,7 +182,6 @@ def execute(
             echo=echo,
         )
 
-    import torch
 
     prep = prepare_job(cfg, on_progress=on_progress, echo=echo)
     model_name = FAST_MODEL if cfg.fast else cfg.model
@@ -226,15 +194,9 @@ def execute(
         warnings.warn("--half is ignored on CPU (fp16 not accelerated there).", stacklevel=2)
         half = False
 
-    tile_int = resolve_tile(cfg.tile, dev, half)
-    if prep.show and cfg.tile == "auto":
-        prep.log(f"Auto tile size: {tile_int}")
-    overlap = clamp_overlap(cfg.overlap, tile_int)
-    if overlap != cfg.overlap and prep.show:
-        prep.log(f"Overlap clamped to {overlap} (must be < tile/2).")
-
     model_scale = registry_scale(model_name)
     descriptor = None
+    model_path = None
     if prep.scale > 1.0:
         if cfg.cancel_event is not None and cfg.cancel_event.is_set():
             raise JobCancelled("cancelled")
@@ -253,28 +215,36 @@ def execute(
         model_scale = resolve_model_scale(descriptor, fallback=model_scale)
         _apply_denoise_dni(descriptor, cfg, model_name, dev, half, prep.log, prep.show)
 
-        if cfg.blend_model and 0.0 < cfg.blend < 1.0:
-            try:
-                other_path = ensure_model(cfg.blend_model, cfg.resolved_weights_dir())
-                other = load_model(other_path, dev, half)
-                other.model.to("cpu")
-                descriptor.model.to("cpu")
-                blend_parameters(descriptor.model, other.model, float(cfg.blend))
-                descriptor.model.to(dev)
-                if prep.show:
-                    prep.log(f"Blended with {cfg.blend_model} @ {cfg.blend:.2f}")
-                del other
-                import gc
+    # Auto-tile after load: cuda.mem_get_info free already excludes resident
+    # weights. Pass _model_param_bytes only as a soft headroom hint (15% in
+    # auto_tile_size) so large models leave room for activations.
+    resident = _model_param_bytes(dev) if descriptor is not None else 0
+    tile_int = resolve_tile(
+        cfg.tile,
+        dev,
+        half,
+        model_bytes=resident if resident > 0 else None,
+    )
+    if prep.show and cfg.tile == "auto":
+        prep.log(f"Auto tile size: {tile_int}")
+    overlap = clamp_overlap(cfg.overlap, tile_int)
+    if overlap != cfg.overlap and prep.show:
+        prep.log(f"Overlap clamped to {overlap} (must be < tile/2).")
 
-                gc.collect()
-                if getattr(dev, "type", None) == "cuda":
-                    torch.cuda.empty_cache()
-            except Exception as exc:  # noqa: BLE001
-                warnings.warn(f"Model blend skipped: {exc}", stacklevel=2)
-                try:
-                    descriptor.model.to(dev)
-                except Exception:  # noqa: BLE001
-                    pass
+    if descriptor is not None and cfg.blend_model and 0.0 < cfg.blend < 1.0:
+        blend_secondary_into(
+            descriptor,
+            other_name=cfg.blend_model,
+            alpha=float(cfg.blend),
+            weights_dir=cfg.resolved_weights_dir(),
+            device=dev,
+            half=half,
+            ensure_model=ensure_model,
+            load_model=load_model,
+            log=prep.log,
+            show=prep.show,
+            label="Model blend",
+        )
 
     passes = compute_passes(prep.scale, model_scale)
     if prep.show:
@@ -321,23 +291,26 @@ def execute(
         if cfg.sr_alpha and descriptor is not None and prep.scale > 1.0:
             if prep.show:
                 prep.log("Upscaling alpha via SR ...")
-            # Target the padded canvas; finalize unwraps with the same margins as RGB.
-            out_alpha = upscale_alpha(
-                prep.alpha,
-                scale=prep.scale,
-                descriptor=descriptor,
-                device=dev,
-                fp16=half,
-                tile=tile_int,
-                overlap=overlap,
-                show_progress=False,
-                model_scale=model_scale,
-                disk_intermediate_threshold=cfg.disk_intermediate_threshold,
-                cancel_event=cfg.cancel_event,
-                pause_event=cfg.pause_event,
-                target_w=run_tw,
-                target_h=run_th,
-            )
+        # Target the padded canvas when SR; finalize unwraps with the same margins as RGB.
+        # Without --sr-alpha, Lanczos to padded size keeps unwrap aligned.
+        out_alpha = upsample_alpha(
+            prep.alpha,
+            scale=prep.scale,
+            target_w=run_tw,
+            target_h=run_th,
+            sr_alpha=bool(cfg.sr_alpha),
+            descriptor=descriptor,
+            device=dev,
+            fp16=half,
+            tile=tile_int,
+            overlap=overlap,
+            show_progress=False,
+            model_scale=model_scale,
+            disk_intermediate_threshold=cfg.disk_intermediate_threshold,
+            cancel_event=cfg.cancel_event,
+            pause_event=cfg.pause_event,
+            allow_sr=True,
+        )
 
     return finalize_result(
         prep,

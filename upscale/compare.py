@@ -81,13 +81,15 @@ def build_variants(
         if not fk:
             continue
         label = "No filters" if fk == "none" else f"Filter · {fk}"
+        # Filter-only variants use a cheap classical resize so we do not load neural weights.
+        algo = base_algorithm if base_algorithm else "lanczos3"
         variants.append(
             {
                 "id": f"filt:{fk}",
                 "label": label,
                 "kind": "filter",
                 "model": base_model,
-                "algorithm": base_algorithm,
+                "algorithm": algo,
                 "filters": _filters_for_key(fk, filter_amounts),
             }
         )

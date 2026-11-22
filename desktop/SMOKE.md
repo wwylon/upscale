@@ -1,11 +1,15 @@
 # Desktop smoke checklist (Windows)
 
+Locale: shell opens `/{UPSCALE_LANG|system}/` (default `en`). Override with `$env:UPSCALE_LANG='pl'`.
+
 ## Dev mode (Python)
 
 - [ ] `pip install -e ".[desktop,server]"` + `onnxruntime`
 - [ ] `py -3 scripts/export_onnx.py 4x-spanx4-ch48`
 - [ ] `$env:UPSCALE_BACKEND='onnx'; py -3 desktop/app.py` opens design UI
 - [ ] Upscale a small PNG; before/after shows result
+
+*(2026-11-19 deep-review session: code path updated; checklist not re-run on a clean PC.)*
 
 ## Release slim build (ship this)
 

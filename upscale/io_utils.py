@@ -96,6 +96,12 @@ def require_raster_suffix(filename: str | None) -> str:
     return suffix
 
 
+def probe_image_size(path: Path | str) -> tuple[int, int]:
+    """Return (width, height) without decoding pixels when possible."""
+    with Image.open(path) as im:
+        return int(im.size[0]), int(im.size[1])
+
+
 @dataclass
 class ImageMeta:
     """Optional sidecar metadata preserved across the pipeline."""

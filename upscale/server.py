@@ -12,7 +12,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import (
     FileResponse,
     RedirectResponse,
@@ -23,17 +23,12 @@ from pydantic import BaseModel, Field
 from .cli import settings_to_cli
 from .config import UpscaleConfig
 from .engine import execute
-from .estimates import estimate_time_seconds, model_fits_vram
-from .filters import estimate_time_factor
 from .models import (
     DEFAULT_WEIGHTS_DIR,
-    MODELS,
     all_models,
     model_status,
-    registry_scale,
 )
-from .schema import LANGUAGE_CATALOG, FilterSettings, JobSettings, ModelInfo
-from .system import gather_system_info
+from .schema import LANGUAGE_CATALOG, JobSettings, ModelInfo
 from .tiling import JobCancelled
 
 
@@ -523,66 +518,7 @@ def _make_preview(src: Path, dest: Path, *, max_edge: int = 512) -> None:
     write_display_preview(src, dest, max_edge=max_edge)
 
 
-@app.post("/api/decode-preview")
-async def decode_preview(file: UploadFile = File(...)) -> Response:
-    """Decode any supported input format to a browser-safe PNG preview.
-
-    Used by the web UI for TGA / PSD / PSB / JP2 / exotic TIFF that
-    ``<img>`` cannot display. Headers carry original pixel size + alpha flag.
-    """
-    import io
-    import tempfile
-
-    import numpy as np
-    from PIL import Image
-
-    from .io_utils import load_rgba, require_raster_suffix
-
-    try:
-        suffix = require_raster_suffix(file.filename)
-    except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
-    if file.content_type:
-        from .io_utils import is_vector_input
-
-        if is_vector_input(file.filename, file.content_type):
-            raise HTTPException(
-                400,
-                "Vector images are not supported. "
-                "Rasterize to PNG, TIFF, or another supported bitmap format first.",
-            )
-    content = await file.read()
-    if len(content) > MAX_UPLOAD_BYTES:
-        raise HTTPException(413, f"Upload exceeds limit of {MAX_UPLOAD_BYTES} bytes")
-    with tempfile.TemporaryDirectory(prefix="upscale-decode-") as td:
-        src = Path(td) / f"input{suffix}"
-        src.write_bytes(content)
-        try:
-            rgb, alpha, _mode = load_rgba(src)
-        except Exception as exc:  # noqa: BLE001
-            raise HTTPException(400, f"Could not decode image: {exc}") from exc
-
-        if alpha is not None:
-            im = Image.fromarray(np.dstack([rgb, alpha]), mode="RGBA")
-        else:
-            im = Image.fromarray(rgb, mode="RGB")
-        h, w = rgb.shape[:2]
-        # Cap preview for UI responsiveness; full file is still uploaded on run.
-        edge = 4096
-        if max(im.size) > edge:
-            im = im.copy()
-            im.thumbnail((edge, edge), Image.Resampling.LANCZOS)
-        buf = io.BytesIO()
-        im.save(buf, format="PNG", optimize=False)
-        data = buf.getvalue()
-    headers = {
-        "X-Image-Width": str(w),
-        "X-Image-Height": str(h),
-        "X-Has-Alpha": "1" if alpha is not None else "0",
-        "X-Source-Name": Path(file.filename or "image").name,
-        "Cache-Control": "no-store",
-    }
-    return Response(content=data, media_type="image/png", headers=headers)
+# /api/decode-preview → upscale.api.media_routes
 
 
 _UI_NO_CACHE = {"Cache-Control": "no-store, max-age=0", "Pragma": "no-cache"}
@@ -662,106 +598,7 @@ def locale_root(locale: str, request: Request) -> Response:
     return _serve_ui_landing(request)
 
 
-class EstimateBody(BaseModel):
-    src_w: int = Field(gt=0)
-    src_h: int = Field(gt=0)
-    scale: float = Field(gt=0)
-    model: str = "RealESRGAN_x4plus"
-    device: str = "auto"
-    model_ready: bool | None = None
-    filters: FilterSettings | None = None
-    measured_mp_s: float | None = None
-    tile: int | None = None
-    half: bool = False
-    algorithm: str | None = None
-
-
-@app.post("/api/estimate")
-def api_estimate(body: EstimateBody) -> dict[str, Any]:
-    """Honest time range; prefers learned MP/s from past jobs on this machine."""
-    from .speed_stats import lookup_measured_mp_s, normalize_device, work_megapixels
-
-    name = body.model
-    ready = body.model_ready
-    if ready is None:
-        ready = model_status(name) == "installed"
-    meta = all_models().get(name) or MODELS.get(name) or {}
-    model_bytes = meta.get("size_bytes")
-    # Prefer on-disk size when weights are installed
-    if model_bytes is None and ready:
-        url_path = (meta.get("url") or "").split("?")[0]
-        ext = Path(url_path).suffix or ".pth"
-        dest = DEFAULT_WEIGHTS_DIR / f"{name}{ext}"
-        if dest.is_file():
-            model_bytes = dest.stat().st_size
-    mscale = int(meta.get("scale") or registry_scale(name) or 4)
-    filt = body.filters or FilterSettings()
-    factor = estimate_time_factor(filt)
-    sys_info = gather_system_info(device=body.device, fp16=body.half)
-    device = normalize_device(sys_info.device or body.device)
-    work_mp = work_megapixels(
-        body.src_w,
-        body.src_h,
-        body.scale,
-        model_scale=mscale,
-        algorithm=body.algorithm,
-    )
-    measured = body.measured_mp_s
-    calibrated = False
-    samples = 0
-    stats_key = None
-    if measured is None:
-        hit = lookup_measured_mp_s(
-            model=name,
-            device=device,
-            half=body.half,
-            algorithm=body.algorithm,
-            work_mp=work_mp,
-        )
-        if hit is not None:
-            measured = float(hit["mp_s"])
-            calibrated = True
-            samples = int(hit["n"])
-            stats_key = hit.get("key")
-    elif measured > 0:
-        calibrated = True
-    lo, hi = estimate_time_seconds(
-        body.src_w,
-        body.src_h,
-        body.scale,
-        model=name,
-        device=device,
-        model_scale=mscale,
-        model_ready=bool(ready),
-        model_bytes=model_bytes,
-        filter_factor=factor,
-        measured_mp_s=measured,
-        algorithm=body.algorithm,
-        calibrated=calibrated,
-    )
-    tile = body.tile or sys_info.auto_tile or 512
-    vram_fit = model_fits_vram(
-        model_bytes,
-        sys_info.vram_free_mb,
-        tile=int(tile),
-        fp16=body.half,
-    )
-    return {
-        "seconds_low": lo,
-        "seconds_high": hi,
-        "seconds": round((lo + hi) / 2, 1),
-        "model_ready": bool(ready),
-        "filter_factor": factor,
-        "vram_fit": vram_fit,
-        "vram_free_mb": sys_info.vram_free_mb,
-        "tile": int(tile),
-        "calibrated": calibrated,
-        "samples": samples,
-        "mp_s": measured,
-        "device": device,
-        "work_mp": round(work_mp, 4),
-        "stats_key": stats_key,
-    }
+# /api/estimate → upscale.api.media_routes
 
 
 @app.get("/{locale}/{page}.html", include_in_schema=False)

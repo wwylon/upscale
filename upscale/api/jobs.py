@@ -35,9 +35,6 @@ async def create_job(
         js = js.model_copy(update={"scale": 4.0})
     if (js.width is None) ^ (js.height is None):
         raise HTTPException(400, "Specify both width and height, or neither.")
-    # Soft output pixel budget (matches job_prep.MAX_OUTPUT_PIXELS intent).
-    if js.width is not None and js.height is not None and js.width * js.height > 200_000_000:
-        raise HTTPException(400, "Output dimensions exceed the pixel budget.")
     if js.scale is not None and js.scale > 64:
         raise HTTPException(400, "Scale exceeds the allowed maximum (64).")
 
@@ -54,7 +51,9 @@ async def create_job(
     job_dir = D.JOBS_ROOT / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
 
-    from upscale.io_utils import is_vector_input, require_raster_suffix
+    from upscale.config import UpscaleConfig
+    from upscale.io_utils import is_vector_input, probe_image_size, require_raster_suffix
+    from upscale.job_prep import resolve_scale_and_targets
 
     try:
         suffix = require_raster_suffix(file.filename)
@@ -84,6 +83,26 @@ async def create_job(
         except Exception:  # noqa: BLE001
             shutil.rmtree(job_dir, ignore_errors=True)
             raise HTTPException(400, "Could not read uploaded image") from None
+
+    # Reject oversize outputs at create time (scale / target / W×H), matching job_prep.
+    try:
+        iw, ih = probe_image_size(input_path)
+        crop = js.crop
+        cw, ch = iw, ih
+        if crop is not None:
+            cw = max(1, min(int(crop.w), iw))
+            ch = max(1, min(int(crop.h), ih))
+        cfg_probe = UpscaleConfig(
+            scale=js.scale,
+            target_size=js.target_size,
+            width=js.width,
+            height=js.height,
+        )
+        resolve_scale_and_targets(cfg_probe, cw, ch)
+    except Exception as exc:  # noqa: BLE001 — UsageError / OSError / ValueError
+        shutil.rmtree(job_dir, ignore_errors=True)
+        msg = str(exc) or "Invalid output sizing."
+        raise HTTPException(400, msg) from exc
 
     job = D.JobRecord(id=job_id, job_dir=job_dir, input_path=input_path, settings=js)
     (job_dir / "settings.json").write_text(

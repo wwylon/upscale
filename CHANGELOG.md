@@ -6,6 +6,13 @@ this project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-11-22
+
+### Changed
+
+- README install leads with `pip install upscale` / `pipx install upscale` (PyPI), plus Release and PyPI badges next to CI.
+- `docs/develop.md` documents why `ui/vendor/babel.min.js` (~3 MB) is vendored for offline in-browser JSX.
+
 ## [0.5.1] - 2026-11-11
 
 ### Fixed

@@ -8,6 +8,7 @@ from fastapi import FastAPI
 def include_routers(app: FastAPI) -> None:
     from .compare_routes import router as compare_router
     from .jobs import router as jobs_router
+    from .media_routes import router as media_router
     from .models_routes import router as models_router
     from .system_routes import router as system_router
 
@@ -15,3 +16,4 @@ def include_routers(app: FastAPI) -> None:
     app.include_router(compare_router)
     app.include_router(models_router)
     app.include_router(system_router)
+    app.include_router(media_router)

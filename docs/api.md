@@ -14,7 +14,11 @@ Bind is loopback by default. Non-loopback `--host` requires `UPSCALE_ALLOW_REMOT
 
 **Resume-checkpoint** sets an explicit `resume_from_checkpoint` flag so strip tiling reopens the output mmap with `r+` instead of truncating.
 
-**Torch vs ONNX:** ONNX/slim path has auto tile (RAM heuristic), no DNI denoise blend, no second-model blend, Lanczos alpha only.
+**Torch vs ONNX:** see [help/backends.md](help/backends.md). ONNX/slim: auto tile prefers CUDA free VRAM when available else host RAM; no continuous DNI; no `--blend-model`; Lanczos alpha only (`--sr-alpha` warned and ignored).
+
+**Upload validation:** `/api/jobs`, `/api/compare`, `/api/suggest`, and `/api/decode-preview` all reject vector inputs and unknown suffixes via the same `require_raster_suffix` / `is_vector_input` guards.
+
+**Pixel budget:** `POST /api/jobs` resolves output size from the uploaded image + settings (scale / target / W×H) and returns **400** if it exceeds ~200 megapixels (same as CLI `job_prep`).
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -36,6 +40,8 @@ Bind is loopback by default. Non-loopback `--host` requires `UPSCALE_ALLOW_REMOT
 | GET | `/api/jobs/{id}/quality` | `mode=seam` or `mode=diff` (Lanczos baseline; optional `quality_diff.png`) |
 | GET | `/api/jobs/{id}/passes/{n}` | Mid-pass preview |
 | POST | `/api/estimate` | Time / VRAM fit estimate |
+| POST | `/api/preflight` | Structured resource / sizing check before queue (`ok`, `checks`, target size) |
+| POST | `/api/decode-preview` | Decode exotic formats to PNG preview |
 | GET | `/api/models` | Model catalog |
 | POST | `/api/models` | Add external model (name `^[A-Za-z0-9._-]+$`; https allowlisted hosts only) |
 | POST | `/api/models/upload` | Multipart weights upload + register |

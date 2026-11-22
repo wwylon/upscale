@@ -165,7 +165,20 @@ async def api_compare(
     run_id = uuid.uuid4().hex
     run_dir = D.JOBS_ROOT / f"compare-{run_id}"
     run_dir.mkdir(parents=True, exist_ok=True)
-    suffix = Path(file.filename or "input.png").suffix or ".png"
+    from upscale.io_utils import is_vector_input, require_raster_suffix
+
+    try:
+        suffix = require_raster_suffix(file.filename)
+    except ValueError as exc:
+        shutil.rmtree(run_dir, ignore_errors=True)
+        raise HTTPException(400, str(exc)) from exc
+    if is_vector_input(file.filename, file.content_type):
+        shutil.rmtree(run_dir, ignore_errors=True)
+        raise HTTPException(
+            400,
+            "Vector images are not supported. "
+            "Rasterize to PNG, TIFF, or another supported bitmap format first.",
+        )
     input_path = run_dir / f"input{suffix}"
     content = await file.read()
     if len(content) > D.MAX_UPLOAD_BYTES:
